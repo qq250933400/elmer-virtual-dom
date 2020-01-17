@@ -1,6 +1,6 @@
 var describe = require("mocha").describe;
 var assert = require("assert");
-var HtmlParse = require("../../lib/virtualDom/index").HtmlParse;
+var HtmlParse = require("../../lib/htmlParse").HtmlParse;
 // var htmlParse = require("../../src/virtualDom/htmlParse").HtmlParse;
 var htmlParse = new HtmlParse();
 

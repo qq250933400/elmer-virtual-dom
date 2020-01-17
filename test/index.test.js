@@ -1,5 +1,5 @@
 require("mocha");
-const assets = require("chai");
+const assets = require("chai").assert;
 
 describe("demo test", () => {
     it("entry", () => {
