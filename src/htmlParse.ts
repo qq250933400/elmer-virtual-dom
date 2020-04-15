@@ -220,7 +220,7 @@ export class HtmlParse extends Common {
                 noAttrMatch = null;
             }
         } else {
-            const endTagReg = /^\<\/\s*([a-z0-9\_\-]*)\s*\>/;
+            const endTagReg = /^\<\/\s*([a-z0-9\_\-]*)\s*\>/i;
             const endTagMatch = htmlCode.match(endTagReg);
             if(endTagMatch) {
                 let tagName = endTagMatch[1];
