@@ -14,6 +14,7 @@
         ]
     },
     "rules": {
+        "interface-over-type-literal": false,
         "adjacent-overload-signatures": true,
         "ban-comma-operator": true,
         "no-duplicate-imports": true,
