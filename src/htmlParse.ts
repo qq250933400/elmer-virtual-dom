@@ -12,7 +12,7 @@ type ReadAttrResult = {
 };
 
 export class HtmlParse extends Common {
-    static className = "HtmlParse";
+    static className:string = "HtmlParse";
     private autoCloseTagList:RegExp[] = [
         /^input$/i,/^br$/i,/^hr$/i,/^img$/i,/^meta$/i,/^\!DOCTYPE$/i
     ];
@@ -29,7 +29,7 @@ export class HtmlParse extends Common {
         };
         const nodeId = this.getRandomID();
         this.rootNodes[nodeId] = result;
-        this.parseNode(htmlCode, result, nodeId);
+        this.parseNode(htmlCode, result, nodeId, selector);
         delete this.rootNodes[nodeId];
         return result;
     }
@@ -60,7 +60,7 @@ export class HtmlParse extends Common {
      * @param parentNode 父元素
      * @param rootNodeKey 保存数据ID
      */
-    private parseNode(htmlCode: string, parentNode:IVirtualElement, rootNodeKey: string): void {
+    private parseNode(htmlCode: string, parentNode:IVirtualElement, rootNodeKey: string, componentName: string): void {
         if(!this.isEmpty(htmlCode)) {
             // 将代码前后空格去掉，在做判断，此时可判读开始的代码段是文本还是dom节点，文本内容保留空格，dom节点去除换行符
             let checkCode = htmlCode.replace(/^([\r\n]*)/," ");
@@ -77,9 +77,9 @@ export class HtmlParse extends Common {
                             let leftCode = "";
                             parentNode.children.push(commentNode);
                             leftCode = checkCode.replace(commentNode.innerHTML, "").replace(/^\<\!--/, "").replace(/^\-\-\>/, "");
-                            this.parseNode(leftCode, parentNode, rootNodeKey);
+                            this.parseNode(leftCode, parentNode, rootNodeKey, componentName);
                         } else {
-                            this.parseNextNode(checkCode, parentNode, rootNodeKey);
+                            this.parseNextNode(checkCode, parentNode, rootNodeKey, componentName);
                         }
                     }
                 } else {
@@ -97,7 +97,7 @@ export class HtmlParse extends Common {
                         status: "APPEND",
                         tagName: "text"
                     });
-                    !this.isEmpty(leftHtmlCode) && this.parseNode(leftHtmlCode, parentNode, rootNodeKey);
+                    !this.isEmpty(leftHtmlCode) && this.parseNode(leftHtmlCode, parentNode, rootNodeKey, componentName);
                     lStart = null;
                     txt = null;
                     leftHtmlCode = null;
@@ -144,7 +144,7 @@ export class HtmlParse extends Common {
      * @param parentNode IVirtualElement 父节点
      * @param rootNodeKey string 根节点ID
      */
-    private parseNextNode(htmlCode: string, parentNode:IVirtualElement, rootNodeKey: string): void {
+    private parseNextNode(htmlCode: string, parentNode:IVirtualElement, rootNodeKey: string, componentName: string): void {
         const tagReg = /^\<([a-z0-9\_\-]*)\s/i;
         const tagNoAttrReg = /^\<([a-z0-9\_\-]*)(([\/]{0,1}\>)|\>)/i;
         if(tagReg.test(htmlCode) || tagNoAttrReg.test(htmlCode)) {
@@ -175,9 +175,9 @@ export class HtmlParse extends Common {
                 leftCode = leftCode.replace(/^\>/, "").replace(/^\/\>/,"").replace(/^(\r\n)*/,"");
                 parentNode.children.push(newNode);
                 if(isAutoClose) {
-                    this.parseNode(leftCode, parentNode, rootNodeKey);
+                    this.parseNode(leftCode, parentNode, rootNodeKey, componentName);
                 } else {
-                    this.parseNode(leftCode, newNode, rootNodeKey);
+                    this.parseNode(leftCode, newNode, rootNodeKey, componentName);
                 }
                 tagName = null;
                 code = null;
@@ -208,9 +208,9 @@ export class HtmlParse extends Common {
                     leftCode = leftCode.replace(/^\>/, "").replace(/^\/\>/, "").replace(/^(\r\n)*/, "");
                     parentNode.children.push(newNode);
                     if(isAutoClose) {
-                        this.parseNode(leftCode, parentNode,rootNodeKey);
+                        this.parseNode(leftCode, parentNode,rootNodeKey, componentName);
                     } else {
-                        this.parseNode(leftCode, newNode, rootNodeKey);
+                        this.parseNode(leftCode, newNode, rootNodeKey, componentName);
                     }
                     tagName = null;
                     leftCode = null;
@@ -230,7 +230,7 @@ export class HtmlParse extends Common {
                     let nextParentNode;
                     parentNodePath.splice(parentNodePath.length - 1, 1);
                     nextParentNode = this.getNodeByPath(this.rootNodes[rootNodeKey],parentNodePath);
-                    this.parseNode(leftCode, nextParentNode, rootNodeKey);
+                    this.parseNode(leftCode, nextParentNode, rootNodeKey, componentName);
                     parentNode.isClose = true;
                     nextParentNode = null;
                     parentNodePath = null;
@@ -253,7 +253,7 @@ export class HtmlParse extends Common {
                         tagName: "!DOCTYPE"
                     };
                     parentNode.children.push(newNode);
-                    this.parseNode(leftCode, parentNode, rootNodeKey);
+                    this.parseNode(leftCode, parentNode, rootNodeKey, componentName);
                     leftIndex = null;
                     leftCode = null;
                     newNode = null;

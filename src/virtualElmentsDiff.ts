@@ -51,54 +51,68 @@ export class VirtualElementsDiff extends Common {
         } else {
             // 遍历对比
             const delElements = [];
-
+            let offsetIndex = 0;
             oldElement.children.map((tmpOldItem:IVirtualElement, index: number) => {
-                if(index < newElement.children.length) {
-                    const tmpNewItem = newElement.children[index];
-                    const checkResult = this.checkSameVirtualElement(tmpNewItem, tmpOldItem);
-                    if(checkResult.sameType) {
-                        if(tmpNewItem.status !== VirtualElementOperate.DELETE) {
-                            if(checkResult.isChanged) {
-                                if(tmpOldItem.status === VirtualElementOperate.DELETE) {
-                                    newElement.children[index].status = "APPEND";
-                                    this.patch(newElement.children[index], oldElement.children[index], true);
-                                } else {
-                                    if(!setAppend) {
-                                        newElement.children[index].changeAttrs = checkResult.changeProps;
-                                        newElement.children[index].status = "UPDATE";
+                let isCheckNextStep = true;
+                if(index + offsetIndex < newElement.children.length) {
+                    let tmpNewItem = newElement.children[index + offsetIndex];
+                    if(!this.isEmpty(tmpOldItem.props.key)) {
+                        const checkKeyResult = this.checkSameVirtualElementByKey(tmpOldItem, newElement.children, index, offsetIndex);
+                        if(!checkKeyResult.find) {
+                            offsetIndex -= 1;
+                            delElements.push(tmpOldItem);
+                            isCheckNextStep = false;
+                        } else {
+                            tmpNewItem = checkKeyResult.dom;
+                            offsetIndex = checkKeyResult.offsetIndex;
+                        }
+                    }
+                    if(isCheckNextStep) {
+                        const checkResult = this.checkSameVirtualElement(tmpNewItem, tmpOldItem);
+                        if(checkResult.sameType) {
+                            if(tmpNewItem.status !== VirtualElementOperate.DELETE) {
+                                if(checkResult.isChanged) {
+                                    if(tmpOldItem.status === VirtualElementOperate.DELETE) {
+                                        newElement.children[index + offsetIndex].status = "APPEND";
+                                        this.patch(newElement.children[index + offsetIndex], oldElement.children[index], true);
                                     } else {
-                                        newElement.children[index].status = "APPEND";
+                                        if(!setAppend) {
+                                            newElement.children[index + offsetIndex].changeAttrs = checkResult.changeProps;
+                                            newElement.children[index + offsetIndex].status = "UPDATE";
+                                        } else {
+                                            newElement.children[index + offsetIndex].status = "APPEND";
+                                        }
+                                        this.patch(newElement.children[index + offsetIndex], oldElement.children[index], setAppend);
                                     }
-                                    this.patch(newElement.children[index], oldElement.children[index], setAppend);
-                                }
-                            } else {
-                                if(tmpOldItem.status === VirtualElementOperate.DELETE) {
-                                    // 两个相同的节点，当旧节点为delete时，dom元素已经被清除，此时需要设置append而不是Update或者Normal
-                                    // 更新所有子节点为append模式， 重新添加元素到dom树
-                                    // 此类型场景为了解决新元素的status没有设置成append导致节点无法新增到新的dom树中.
-                                    // 新增的结构不需要在往下进行diff运算
-                                    newElement.children[index].status = "APPEND";
-                                    this.patch(newElement.children[index], oldElement.children[index], true);
                                 } else {
-                                    if(!setAppend) {
-                                        newElement.children[index].status = "NORMAL";
-                                    } else {
+                                    if(tmpOldItem.status === VirtualElementOperate.DELETE) {
+                                        // 两个相同的节点，当旧节点为delete时，dom元素已经被清除，此时需要设置append而不是Update或者Normal
+                                        // 更新所有子节点为append模式， 重新添加元素到dom树
+                                        // 此类型场景为了解决新元素的status没有设置成append导致节点无法新增到新的dom树中.
+                                        // 新增的结构不需要在往下进行diff运算
                                         newElement.children[index].status = "APPEND";
+                                        this.patch(newElement.children[index + offsetIndex], oldElement.children[index], true);
+                                    } else {
+                                        if(!setAppend) {
+                                            newElement.children[index + offsetIndex].status = "NORMAL";
+                                        } else {
+                                            newElement.children[index + offsetIndex].status = "APPEND";
+                                        }
+                                        this.patch(newElement.children[index + offsetIndex], oldElement.children[index], setAppend);
                                     }
-                                    this.patch(newElement.children[index], oldElement.children[index], setAppend);
                                 }
                             }
+                            newElement.children[index + offsetIndex].dom = tmpOldItem.dom;
+                            newElement.children[index + offsetIndex].virtualID = tmpOldItem.virtualID;
+                        } else {
+                            // 不是相同节点，删除旧节点，增加节点
+                            if(newElement.status !== VirtualElementOperate.DELETE) {
+                                newElement.children[index + offsetIndex].status = "APPEND";
+                            }
+                            tmpOldItem.status === VirtualElementOperate.DELETE;
+                            delElements.push(tmpOldItem);
                         }
-                        newElement.children[index].dom = tmpOldItem.dom;
-                        newElement.children[index].virtualID = tmpOldItem.virtualID;
-                    } else {
-                        // 不是相同节点，删除旧节点，增加节点
-                        if(newElement.status !== VirtualElementOperate.DELETE) {
-                            newElement.children[index].status = "APPEND";
-                        }
-                        tmpOldItem.status === VirtualElementOperate.DELETE;
-                        delElements.push(tmpOldItem);
-                    }
+                    } // only match condtion element can do normal checking flow;
                 } else {
                     tmpOldItem.status === VirtualElementOperate.DELETE;
                     delElements.push(tmpOldItem);
@@ -106,6 +120,34 @@ export class VirtualElementsDiff extends Common {
             });
             newElement.delElements = delElements;
         }
+    }
+    /**
+     * 检测有key属性的dom
+     * @param checkItem 旧dom对象
+     * @param newList 新对象列表
+     * @param index 检测位置
+     * @param offsetIndex 偏移位置
+     */
+    private checkSameVirtualElementByKey(checkItem:IVirtualElement​​, newList: IVirtualElement[], index: number, offsetIndex: number): any {
+        const checkResult = {
+            dom: null,
+            find: false,
+            offsetIndex
+        };
+        if(index + offsetIndex < newList.length) {
+            for(let i=index + offsetIndex;i<newList.length;i++) {
+                const newDom = newList[i];
+                // + "" 将number转换为字符串
+                if(checkItem.tagName === newDom.tagName && checkItem.props.key + "" === newDom.props.key + "") {
+                    // same tagName and same key
+                    checkResult.find = true;
+                    checkResult.offsetIndex = i - index;
+                    checkResult.dom = newDom;
+                    break;
+                }
+            }
+        }
+        return checkResult;
     }
     /**
      * 对比两个dom是不是相同的dom，相同的dom对比属性有没有变化
