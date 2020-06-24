@@ -254,6 +254,93 @@ export class VirtualElement extends Common implements IVirtualElement {
         });
         newPath = null;
     }
+    /**
+     * 根据查询class规则筛选dom
+     * @param className 查询class规则
+     * @param queryDom 查询根元素
+     * @return IVirtualElement[]
+     */
+    getElementsByClassName(className: string, queryDom?:IVirtualElement): IVirtualElement[] {
+        const lResult:IVirtualElement[] = [];
+        if(!this.isEmpty(className)) {
+            if(queryDom) {
+                if(queryDom.props) {
+                    let checkClassName = queryDom.props.class || "";
+                    let checkClassArr = checkClassName.replace(/\s{1,}/g, " ").split(" ");
+                    let queryClassArr = className.replace(/\s{1,}/g, " ").split(",");
+                    let domMatched  = false;
+                    for(let i=0;i<queryClassArr.length;i++) {
+                        const myClass = queryClassArr[i];
+                        const tagMatch = myClass.match(/^([a-z0-9\_\-]{1,})[\#\.]/);
+                        let checkMyClassArr = myClass.match(/[\#\.][a-z0-9\-\_]{1,}/g);
+                        if(!tagMatch && !checkMyClassArr) {
+                            checkMyClassArr = [myClass];
+                        } else {
+                            if(!checkMyClassArr) {
+                                checkMyClassArr = [];
+                            }
+                            if(tagMatch) {
+                                checkMyClassArr.splice(0,0, tagMatch[1]);
+                            }
+                        }
+                        if(checkMyClassArr && checkMyClassArr.length>0) {
+                            let isMatched = true;
+                            for(let j=0;j<checkMyClassArr.length;j++) {
+                                const subClass = checkMyClassArr[j];
+                                const subClassValue = subClass.replace(/^[\.\#]*/, "");
+                                if(/^\./.test(subClass)) {
+                                    if(checkClassArr.indexOf(subClassValue) < 0) {
+                                        isMatched = false;
+                                        break;
+                                    }
+                                } else if(/^\#/.test(subClass)) {
+                                    if(queryDom.props.id !== subClassValue) {
+                                        isMatched = false;
+                                        break;
+                                    }
+                                } else {
+                                    if(queryDom.tagName !== subClassValue) {
+                                        isMatched = false;
+                                        break;
+                                    }
+                                }
+                            }
+                            domMatched = isMatched;
+                            if(domMatched) {
+                                break;
+                            }
+                        }
+                    }
+                    if(domMatched) {
+                        lResult.push(queryDom);
+                    }
+                    checkClassName = null;
+                    checkClassArr = null;
+                    queryClassArr = null;
+                    if(queryDom.children && queryDom.children.length>0) {
+                        queryDom.children.map((item:IVirtualElement) => {
+                            let matchResult = this.getElementsByClassName(className, item);
+                            if(matchResult && matchResult.length>0) {
+                                lResult.push(...matchResult);
+                            }
+                            matchResult = null;
+                        });
+                    }
+                }
+            } else {
+                this.children.map((item:IVirtualElement) => {
+                    let matchResult = this.getElementsByClassName(className, item);
+                    if(matchResult && matchResult.length>0) {
+                        lResult.push(...matchResult);
+                    }
+                    matchResult = null;
+                });
+            }
+            return lResult;
+        } else {
+            return [];
+        }
+    }
     private setChildStatus(item: IVirtualElement,status:VirtualElementOperateType): void {
         item.status = status;
         for(let i=0;i<item.children.length;i++) {
