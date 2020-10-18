@@ -25,6 +25,7 @@ export interface IVirtualElement {
     isClose?: boolean;
     key?: string;
     path: number[];
+    parentPath: number[];
     props: any;
     status: VirtualElementOperateType;
     tagAttrs?: any;

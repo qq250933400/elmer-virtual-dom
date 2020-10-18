@@ -9,6 +9,7 @@ export class VirtualElement extends Common implements IVirtualElement {
     innerHTML: string;
     tagName: string;
     props: any;
+    parentPath: [];
     path: number[];
     key: string;
     events: any[];
@@ -35,6 +36,7 @@ export class VirtualElement extends Common implements IVirtualElement {
             children: children || [],
             data: {},
             events: [],
+            parentPath: [],
             path: [],
             props: props || {},
             status: "APPEND",
@@ -66,6 +68,7 @@ export class VirtualElement extends Common implements IVirtualElement {
             events: this.events,
             innerHTML: this.innerHTML,
             key: this.key,
+            parentPath: this.parentPath,
             path: this.path,
             props: this.props || {},
             status: this.status,

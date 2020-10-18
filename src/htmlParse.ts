@@ -22,6 +22,7 @@ export class HtmlParse extends Common {
             children: [],
             data: {},
             events: [],
+            parentPath: [],
             path:[],
             props: {},
             status: "APPEND",
@@ -35,7 +36,7 @@ export class HtmlParse extends Common {
     }
     /**
      * 根据节点路径查找Node节点
-     * @param rootNodeKey string 根路径ID
+     * @param rootNode IVirtualElement 根路径ID
      * @param path Array<number> node路径
      */
     public getNodeByPath(rootNode: IVirtualElement, path: string[]):IVirtualElement | null {
@@ -92,6 +93,7 @@ export class HtmlParse extends Common {
                         events: [],
                         innerHTML: txt,
                         isClose: true,
+                        parentPath: parentNode.path,
                         path:[...parentNode.path, parentNode.children.length],
                         props: {},
                         status: "APPEND",
@@ -120,6 +122,7 @@ export class HtmlParse extends Common {
             innerHTML: "",
             isClose: true,
             path:[...parentNode.path, parentNode.children.length],
+            parentPath: parentNode.path,
             props: {},
             status: "APPEND",
             tagName: "<!--"
@@ -167,6 +170,7 @@ export class HtmlParse extends Common {
                     events: attrsResult.events,
                     innerHTML: "",
                     isClose: isAutoClose,
+                    parentPath: parentNode.path,
                     path:[...parentNode.path, parentNode.children.length],
                     props: attrsResult.attrs,
                     status: "APPEND",
@@ -200,6 +204,7 @@ export class HtmlParse extends Common {
                         events: [],
                         innerHTML: "",
                         isClose: isAutoClose,
+                        parentPath: parentNode.path,
                         path:[...parentNode.path, parentNode.children.length],
                         props: {},
                         status: "APPEND",
@@ -247,6 +252,7 @@ export class HtmlParse extends Common {
                         events: [],
                         innerHTML: "",
                         isClose: true,
+                        parentPath: parentNode.path,
                         path:[...parentNode.path, parentNode.children.length],
                         props: {},
                         status: "APPEND",
@@ -286,7 +292,11 @@ export class HtmlParse extends Common {
                         }
                     }
                     attrHtml = attrArr.join(" ");
-                    innerHTML += "<" + tmpItem.tagName + " " + attrHtml + ">" + tmpItem.innerHTML + "</" + tmpItem.tagName + ">";
+                    if(tmpItem.tagName !== "text") {
+                        innerHTML += "<" + tmpItem.tagName + " " + attrHtml + ">" + tmpItem.innerHTML + "</" + tmpItem.tagName + ">";
+                    } else {
+                        innerHTML += tmpItem.innerHTML;
+                    }
                     attrArr = null;
                 } else {
                     innerHTML += tmpItem.innerHTML;
