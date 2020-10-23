@@ -12,7 +12,7 @@ var sourceDom = htmlParse.parse(`<div><span>测试dom结构{{title}}</span>
     <ul><li em:for="let item in this.testData">{{item.title}}</li></ul>
     <div>
         <forEach data="testData" item="itemData" index="sKey">
-            <button>{{itemData.title}}{{sKey}}</button>
+            <button key="mapFor">{{itemData.title}}{{sKey}}</button>
         </forEach>
     </div>
 </div>`);
@@ -24,6 +24,7 @@ var componentData = {
         ttile: "BB"
     }]
 };
+var newDom = virtualRender.render(sourceDom, null, componentData);
 describe("虚拟dom渲染测试", () => {
     it("验证html代码解析结果", () => {
         assert.deepStrictEqual(sourceDom.children[0].tagName, "div");
@@ -31,15 +32,12 @@ describe("虚拟dom渲染测试", () => {
     });
     describe("第一次渲染dom树", () => {
         it("列表渲染, 第二个标签子元素数量应为2", ()=>{
-            var newDom = virtualRender.render(sourceDom, null, componentData);
             assert.deepStrictEqual(newDom.children[0].children[1].children.length, 2);
         });
         it("新标签forEach列表渲染, 第二个标签子元素数量应为2", ()=>{
-            var newDom = virtualRender.render(sourceDom, null, componentData);
             assert.deepStrictEqual(newDom.children[0].children[2].children.length, 2);
         });
         it("静态文本渲染, 第一个文本标签内容应该是：测试dom结构demo", ()=>{
-            var newDom = virtualRender.render(sourceDom, null, componentData);
             assert.deepStrictEqual(newDom.children[0].children[0].innerHTML, "测试dom结构demo");
         });
     });

@@ -34,6 +34,8 @@ export class VirtualRender extends Common {
             ...domData.data,
             ...(optionsData || {})
         };
+        let hasForEach = false;
+        let updatePath = false;
         // tslint:disable-next-line: forin
         for(const kIndex in domData.children) {
             let dom = domData.children[kIndex];
@@ -43,25 +45,36 @@ export class VirtualRender extends Common {
                 if(forDoms.length > 0) {
                     domData.children.splice(parseInt(kIndex,10), 1, ...forDoms);
                     dom = domData.children[kIndex];
+                    updatePath = true;
                 } else {
-                    domData.children.splice(parseInt(kIndex,10), 1);
+                    domData.children[kIndex].status === "DELETE";
                 }
             }
             if(dom.tagName === "forEach") {
                  // 进入forEach循环
-                 const forEachDoms = this.forEachRender(dom, component, optionalData);
-                 if(forEachDoms.length > 0) {
-                     domData.children.splice(parseInt(kIndex,10), 1, ...forEachDoms);
-                     dom = domData.children[kIndex];
-                 } else {
-                    domData.children.splice(parseInt(kIndex,10), 1);
-                 }
+                const forEachDoms = this.forEachRender(dom, component, optionalData);
+                if(forEachDoms.length > 0) {
+                    domData.children.splice(parseInt(kIndex,10), 1, ...forEachDoms);
+                    dom = domData.children[kIndex];
+                    updatePath = true;
+                } else {
+                    domData.children[kIndex].status === "DELETE";
+                }
+                hasForEach = true;
             }
             if(dom.children.length > 0) {
                 this.forEach(dom, oldDomData ? oldDomData.children[kIndex] : null, component, doDiff, optionalData);
             }
-            console.log(dom.tagName, dom.data);
-            // this version is support forEach tagName
+
+        }
+    }
+    private renderAttribute(dom:IVirtualElement): void {
+        if(dom.props) {
+            for(const attrKey in dom.props) {
+                if(/^em\:/i.test(attrKey)) {
+                    // em:开头的属性表示值是从component获取，或者是判断逻辑,[neq,!=] [eq,==] [lt,<] [gt,>],[lteq, <=],[gteq, >=]
+                }
+            }
         }
     }
     /**
@@ -110,9 +123,27 @@ export class VirtualRender extends Common {
         const itemKey: string = dom.props["item"];
         const indexKey: string = dom.props["index"];
         const repeatData:any = this.getValue(optionsData, dataKey) || this.getValue(component, dataKey);
-        console.log("-----forEach label:", dataKey, repeatData);
         if(repeatData) {
-            this.virtualDom.init(dom);
+            let childrenLen = 0;
+            let repeateDom:IVirtualElement = null;
+            dom.children.map((checkDom: IVirtualElement) => {
+                if (checkDom.tagName === "text" && checkDom.innerHTML.replace(/[\r\n\s]*/g, "").length > 0) {
+                    childrenLen += 1;
+                    repeateDom = checkDom;
+                } else {
+                    if (checkDom.tagName !== "text") {
+                        childrenLen += 1;
+                        repeateDom = checkDom;
+                    }
+                }
+            });
+            if (childrenLen !== 1) {
+                throw new Error("forEach标签下的一级子标签只能有一个标签,并且不能为空.");
+            }
+            if(this.isEmpty(repeateDom.props.key)) {
+                throw new Error("forEach标签下的子标签必须要设置key属性");
+            }
+            this.virtualDom.init(repeateDom);
             // tslint:disable-next-line: forin
             for(const forKey in repeatData) {
                 const newDom = this.virtualDom.clone();
@@ -121,6 +152,7 @@ export class VirtualRender extends Common {
                     ...newDom.data,
                     ...optionsData
                 };
+                newDom.props.key = newDom.props.key + forKey;
                 newDom.data[itemKey] = newItemData;
                 newDom.data[indexKey] = forKey;
                 resultDoms.push(newDom);
