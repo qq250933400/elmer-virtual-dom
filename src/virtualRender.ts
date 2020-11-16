@@ -1,5 +1,7 @@
 import { Common } from "elmer-common";
 import { IHtmlNodeEventData, IVirtualElement } from "./IVirtualElement";
+import { ASyntax, SyntaxText } from "./RenderingSyntax";
+import { TypeRenderActions, TypeRenderEvent } from "./RenderingSyntax/ISyntax";
 import { VirtualElement } from "./virtualElement";
 
 type VirtualNodeData = {
@@ -7,14 +9,28 @@ type VirtualNodeData = {
     events?:IHtmlNodeEventData[],
     dataSet?: any;
 };
+type VirtualRenderEvent = {
+    domData:IVirtualElement;
+    oldDomData:IVirtualElement;
+    component:any;
+    doDiff?: boolean;
+    optionsData?: any;
+    hasChange?: boolean;
+};
+type VirtualLoopRenderResult = {
+    hasRenderChange: boolean;
+    innerHTML: string;
+};
 /**
  * v2.0.0
  * 新版本VirtualRender合并渲染和diff运算，减少虚拟dom的遍历提升速度
  */
 export class VirtualRender extends Common {
     static className: string = "VirtualRender";
+    plugin:ASyntax[] = [];
     constructor(private virtualDom: VirtualElement) {
         super();
+        this.plugin.push(new SyntaxText());
     }
     /**
      * 渲染虚拟dom，并做diff运算标记dom状态
@@ -23,59 +39,148 @@ export class VirtualRender extends Common {
      * @param component 渲染component对象
      */
     render(domData:IVirtualElement, oldDomData:IVirtualElement,component:any): IVirtualElement {
-        this.forEach(domData, oldDomData, component, oldDomData && oldDomData.children.length > 0);
+        this.forEach({
+            component,
+            doDiff: oldDomData && oldDomData.children.length > 0,
+            domData,
+            oldDomData,
+            optionsData: null
+        });
         return domData;
     }
-    private isEmptyObject(target:any): boolean {
-        return (target && Object.keys(target).length <=0) || (undefined === target || null === target);
-    }
-    private forEach(domData:IVirtualElement, oldDomData:IVirtualElement, component:any, doDiff?: boolean, optionsData?: any): void {
+    private forEach(event: VirtualRenderEvent): VirtualLoopRenderResult {
         const optionalData:any = {
-            ...domData.data,
-            ...(optionsData || {})
+            ...event.domData.data,
+            ...(event.optionsData || {})
         };
         let hasForEach = false;
         let updatePath = false;
+        let hasRenderChange = false;
+        let hasRenderInnerHTML = "";
+        let forLen = event.domData.children.length;
         // tslint:disable-next-line: forin
-        for(const kIndex in domData.children) {
-            let dom = domData.children[kIndex];
+        for(let kIndex =0; kIndex < forLen; kIndex++) {
+            let dom = event.domData.children[kIndex];
             if(!this.isEmpty(dom.props["em:for"]) && dom.tagName !== "forEach") {
                 // 进入for循环
-                const forDoms = this.repeatRender(dom, component, optionalData);
+                const forDoms = this.repeatRender(dom, event.component, optionalData);
                 if(forDoms.length > 0) {
-                    domData.children.splice(parseInt(kIndex,10), 1, ...forDoms);
-                    dom = domData.children[kIndex];
+                    event.domData.children.splice(kIndex, 1, ...forDoms);
+                    dom = event.domData.children[kIndex];
                     updatePath = true;
+                    forLen += forDoms.length - 1;
                 } else {
-                    domData.children[kIndex].status === "DELETE";
+                    event.domData.children[kIndex].status === "DELETE";
                 }
             }
             if(dom.tagName === "forEach") {
-                 // 进入forEach循环
-                const forEachDoms = this.forEachRender(dom, component, optionalData);
+                // 进入forEach循环
+                const forEachDoms = this.forEachRender(dom, event.component, optionalData);
                 if(forEachDoms.length > 0) {
-                    domData.children.splice(parseInt(kIndex,10), 1, ...forEachDoms);
-                    dom = domData.children[kIndex];
+                    event.domData.children.splice(kIndex, 1, ...forEachDoms);
+                    dom = event.domData.children[kIndex];
                     updatePath = true;
+                    forLen += forEachDoms.length - 1;
                 } else {
-                    domData.children[kIndex].status === "DELETE";
+                    event.domData.children[kIndex].status === "DELETE";
                 }
                 hasForEach = true;
             }
             if(dom.children.length > 0) {
-                this.forEach(dom, oldDomData ? oldDomData.children[kIndex] : null, component, doDiff, optionalData);
-            }
-
-        }
-    }
-    private renderAttribute(dom:IVirtualElement): void {
-        if(dom.props) {
-            for(const attrKey in dom.props) {
-                if(/^em\:/i.test(attrKey)) {
-                    // em:开头的属性表示值是从component获取，或者是判断逻辑,[neq,!=] [eq,==] [lt,<] [gt,>],[lteq, <=],[gteq, >=]
+                const myEvent:VirtualRenderEvent = {
+                    component: event.component,
+                    doDiff: event.doDiff,
+                    domData: dom,
+                    oldDomData: event.oldDomData ? event.oldDomData.children[kIndex] : null,
+                    optionsData: optionalData
+                };
+                const myResult = this.forEach(myEvent);
+                if(myResult.hasRenderChange) {
+                    // 数据有变化更新innerHTML
+                    dom.innerHTML = myResult.innerHTML;
                 }
             }
+            if(this.renderAttribute(dom, event.component,{
+                ...optionalData,
+                ...(dom.data || {})
+            })) {
+                // 有绑定内容渲染，更新innerHTML
+                hasRenderChange = true;
+            }
+            if(this.isEmpty(hasRenderInnerHTML)) {
+                hasRenderInnerHTML = dom.innerHTML;
+            } else {
+                hasRenderInnerHTML += "\r\n" + dom.innerHTML;
+            }
         }
+        return {
+            hasRenderChange,
+            innerHTML: hasRenderInnerHTML
+        };
+    }
+    /**
+     * 渲染dom属性，如果有绑定值则返回true,通知上一级渲染有改动，如果没有绑定数据被渲染到dom，则会被标记为Static状态，在做diff时不需要进行比较
+     * @param dom 渲染属性
+     * @param component 渲染组件对象
+     * @param optionalData 组件绑定动态数据
+     */
+    private renderAttribute(dom:IVirtualElement, component:any,optionalData: any): boolean {
+        let hasChange = false;
+        if(dom.tagName !== "text") {
+            if(dom.props) {
+                const attributes = [];
+                // tslint:disable-next-line: forin
+                for(const attrKey in dom.props) {
+                    let dType:TypeRenderActions;
+                    let attrValue = dom.props[attrKey];
+                    if(/^em\:/i.test(attrKey)) {
+                        dType = "BindAction";
+                    } else if(/^et\i/.test(attrKey)) {
+                        dType = "BindEvent";
+                    } else {
+                        dType = "BindText";
+                    }
+                    for(const plugin of this.plugin) {
+                        const renderEvent: TypeRenderEvent = {
+                            component,
+                            data: optionalData,
+                            target: dom.props[attrKey],
+                            type: dType
+                        };
+                        const renderResult = plugin.render(renderEvent);
+                        attrValue = renderResult.result;
+                        if(renderResult.hasChange) {
+                            hasChange = true;
+                        }
+                        if(renderEvent.break) {
+                            break;
+                        }
+                    }
+                    dom.props[attrKey] = attrValue;
+                    attributes.push(`${attrKey}="${attrValue}"`);
+                }
+            }
+        } else {
+            let result = dom.innerHTML;
+            for(const plugin of this.plugin) {
+                const renderEvent: TypeRenderEvent = {
+                    component,
+                    data: optionalData,
+                    target: result,
+                    type: "BindText"
+                };
+                const renderResult = plugin.render(renderEvent);
+                result = renderResult.result;
+                if(renderResult.hasChange) {
+                    hasChange = true;
+                }
+                if(renderEvent.break) {
+                    break;
+                }
+            }
+            dom.innerHTML = result;
+        }
+        return hasChange;
     }
     /**
      * 旧语法循环渲染列表
@@ -97,6 +202,7 @@ export class VirtualRender extends Common {
                 for(const forKey in repeatData) {
                     const newDom = this.virtualDom.clone();
                     const newItemData = JSON.parse(JSON.stringify(repeatData[forKey]));
+                    newDom.props = {...dom.props};
                     delete newDom.props["em:for"];
                     newItemData.key = forKey;
                     newDom.data = {
@@ -152,6 +258,7 @@ export class VirtualRender extends Common {
                     ...newDom.data,
                     ...optionsData
                 };
+                newDom.props = {...repeateDom.props};
                 newDom.props.key = newDom.props.key + forKey;
                 newDom.data[itemKey] = newItemData;
                 newDom.data[indexKey] = forKey;
