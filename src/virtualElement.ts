@@ -134,13 +134,10 @@ export class VirtualElement extends Common implements IVirtualElement {
             }
         }
     }
-    parent(rootElement: IVirtualElement): IVirtualElement {
-        let curElement = rootElement;
-        for(let i = 0;i<this.path.length-1;i++) {
-            const curIndex = this.path[i];
-            curElement = this.getElementByIndex(curElement, curIndex);
-        }
-        return curElement;
+    parent(findDom: IVirtualElement): IVirtualElement {
+        const path = JSON.parse(JSON.stringify(findDom.path));
+        path.splice(path.length - 1, 1);
+        return this.getElementByPath(path);
     }
     getElementByPath(path: number[]): IVirtualElement | null | undefined {
         if(this.isArray(path) && path.length>0) {
@@ -161,10 +158,10 @@ export class VirtualElement extends Common implements IVirtualElement {
     /**
      * 获取前一个节点
      */
-    getPrev(root: IVirtualElement): IVirtualElement|null {
-        if(root) {
-            const parent = this.parent(root);
-            const index = this.path[this.path.length-1];
+    getPrev(refDom: IVirtualElement): IVirtualElement|null {
+        if(refDom) {
+            const parent = this.parent(refDom);
+            const index = refDom.path[refDom.path.length-1];
             if(parent && index-1>=0 && index-1<parent.children.length) {
                 for(let i=index-1;i>=0;i--) {
                     const tmpChild = parent.children[i];
@@ -176,10 +173,10 @@ export class VirtualElement extends Common implements IVirtualElement {
         }
         return null;
     }
-    getNext(root:IVirtualElement): IVirtualElement|null {
-        if(root) {
-            const parent = this.parent(root);
-            const index = this.path[this.path.length-1]+1;
+    getNext(refDom:IVirtualElement): IVirtualElement|null {
+        if(refDom) {
+            const parent = this.parent(refDom);
+            const index = refDom.path[refDom.path.length-1]+1;
             if(index>=0 && index<parent.children.length) {
                 return parent.children[index];
             }
@@ -235,13 +232,13 @@ export class VirtualElement extends Common implements IVirtualElement {
             delete data.events;
         }
     }
-    virtualElementHasChagne(data:IVirtualElement): boolean {
+    virtualElementHasChange(data:IVirtualElement): boolean {
         if(data.status !== VirtualElementOperate.NORMAL) {
             return true;
         } else {
             if(data.children && data.children.length>0) {
                 for(const checkItem of data.children) {
-                    if(this.virtualElementHasChagne(checkItem)) {
+                    if(this.virtualElementHasChange(checkItem)) {
                         return true;
                     }
                 }
@@ -274,8 +271,8 @@ export class VirtualElement extends Common implements IVirtualElement {
                     let domMatched  = false;
                     for(let i=0;i<queryClassArr.length;i++) {
                         const myClass = queryClassArr[i];
-                        const tagMatch = myClass.match(/^([a-z0-9\_\-]{1,})[\#\.]/);
-                        let checkMyClassArr = myClass.match(/[\#\.][a-z0-9\-\_]{1,}/g);
+                        const tagMatch = myClass.match(/^([a-z0-9\_\-]{1,})[\#\.]/i);
+                        let checkMyClassArr = myClass.match(/[\#\.][a-z0-9\-\_]{1,}/ig);
                         if(!tagMatch && !checkMyClassArr) {
                             checkMyClassArr = [myClass];
                         } else {

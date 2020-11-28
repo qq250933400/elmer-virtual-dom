@@ -1,6 +1,6 @@
 import { Common } from "elmer-common";
 import { IHtmlNodeEventData, IVirtualElement } from "./IVirtualElement";
-import { ASyntax, SyntaxText } from "./RenderingSyntax";
+import { ASyntax, SyntaxText, SyntaxEvent } from "./RenderingSyntax";
 import { TypeRenderActions, TypeRenderEvent } from "./RenderingSyntax/ISyntax";
 import { VirtualElement } from "./virtualElement";
 
@@ -16,6 +16,7 @@ type VirtualRenderEvent = {
     doDiff?: boolean;
     optionsData?: any;
     hasChange?: boolean;
+    updateParentPath?: boolean;
 };
 type VirtualLoopRenderResult = {
     hasRenderChange: boolean;
@@ -31,6 +32,7 @@ export class VirtualRender extends Common {
     constructor(private virtualDom: VirtualElement) {
         super();
         this.plugin.push(new SyntaxText());
+        this.plugin.push(new SyntaxEvent());
     }
     /**
      * 渲染虚拟dom，并做diff运算标记dom状态
@@ -69,6 +71,7 @@ export class VirtualRender extends Common {
                     dom = event.domData.children[kIndex];
                     updatePath = true;
                     forLen += forDoms.length - 1;
+                    hasForEach = true;
                 } else {
                     event.domData.children[kIndex].status === "DELETE";
                 }
@@ -81,10 +84,14 @@ export class VirtualRender extends Common {
                     dom = event.domData.children[kIndex];
                     updatePath = true;
                     forLen += forEachDoms.length - 1;
+                    hasForEach = true;
                 } else {
                     event.domData.children[kIndex].status === "DELETE";
                 }
                 hasForEach = true;
+            }
+            if(hasForEach) {
+                dom.path = [...event.domData.path, kIndex];
             }
             if(dom.children.length > 0) {
                 const myEvent:VirtualRenderEvent = {
@@ -92,7 +99,8 @@ export class VirtualRender extends Common {
                     doDiff: event.doDiff,
                     domData: dom,
                     oldDomData: event.oldDomData ? event.oldDomData.children[kIndex] : null,
-                    optionsData: optionalData
+                    optionsData: optionalData,
+                    updateParentPath: hasForEach
                 };
                 const myResult = this.forEach(myEvent);
                 if(myResult.hasRenderChange) {
@@ -145,7 +153,8 @@ export class VirtualRender extends Common {
                             component,
                             data: optionalData,
                             target: dom.props[attrKey],
-                            type: dType
+                            type: dType,
+                            break: false
                         };
                         const renderResult = plugin.render(renderEvent);
                         attrValue = renderResult.result;
@@ -170,9 +179,9 @@ export class VirtualRender extends Common {
                     type: "BindText"
                 };
                 const renderResult = plugin.render(renderEvent);
-                result = renderResult.result;
                 if(renderResult.hasChange) {
                     hasChange = true;
+                    result = renderResult.result;
                 }
                 if(renderEvent.break) {
                     break;
@@ -224,7 +233,7 @@ export class VirtualRender extends Common {
      * @param optionsData 组件间传递数据
      */
     private forEachRender(dom:IVirtualElement, component:any, optionsData: any): IVirtualElement[] {
-        const dataKey: string = (dom.props["data"] || "").replace(/^\s*/, "").replace(/\s$/,"").replace(/^this\./i,"");
+        const dataKey: string = (dom.props["data"] || "").replace(/^\s*\{\{/,"").replace(/\}\}\s*$/, "").replace(/^\s*/, "").replace(/\s$/,"").replace(/^this\./i,"");
         const resultDoms: IVirtualElement[] = [];
         const itemKey: string = dom.props["item"];
         const indexKey: string = dom.props["index"];

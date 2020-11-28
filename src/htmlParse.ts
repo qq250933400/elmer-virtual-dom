@@ -243,7 +243,7 @@ export class HtmlParse extends Common {
                 tagName = null;
                 leftCode = null;
             } else {
-                if(/^\s\<\!DOCTYPE/.test(htmlCode)) {
+                if(/^\s*\<\!DOCTYPE/.test(htmlCode)) {
                     let leftIndex = htmlCode.indexOf(">");
                     let leftCode  = leftIndex > 0 ? htmlCode.substr(leftIndex + 1) : "";
                     let newNode:IVirtualElement = {

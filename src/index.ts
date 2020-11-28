@@ -1,6 +1,7 @@
 // import { VirtualElement as Element } from "./virtualElement";
 
 export * from "./virtualElement";
-export * from "./htmlParse";
+export * from "./HtmlParse";
 export * from "./IVirtualElement";
-export * from "./virtualElmentsDiff";
+export * from "./VirtualElementsDiff";
+export * from "./VirtualRender";

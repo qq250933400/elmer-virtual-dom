@@ -12,7 +12,3 @@ export type TypeRenderResult = {
     hasChange?: boolean;
     result:any;
 };
-
-export interface ISyntax {
-    render(event: TypeRenderEvent):TypeRenderResult;
-}
