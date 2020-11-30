@@ -17,6 +17,7 @@ describe("旧版本diff算法模块测试", () => {
     it("第一次渲染diff运算", () => {
         virtualRender.render(virtualDoms, null, {
             title: "demo",
+            // tslint:disable-next-line: object-literal-sort-keys
             buttons: [
                 {title: "AA", value: 2},
                 {title: "BB", value: 3}
@@ -34,6 +35,7 @@ describe("旧版本diff算法模块测试", () => {
     it("第一次渲染diff运算", () => {
         virtualRender.render(virtualDoms, null, {
             title: "demo",
+            // tslint:disable-next-line: object-literal-sort-keys
             buttons: [
                 {title: "AA", value: 2},
                 {title: "BB", value: 3}
@@ -43,6 +45,7 @@ describe("旧版本diff算法模块测试", () => {
         const newVirtualDom = htmlParse.parse(htmlCode);
         virtualRender.render(newVirtualDom, null, {
             title: "demo1",
+            // tslint:disable-next-line: object-literal-sort-keys
             buttons: [
                 {title: "CC", value: 2},
                 {title: "DD", value: 3}
