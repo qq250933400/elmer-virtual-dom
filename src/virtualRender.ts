@@ -134,26 +134,19 @@ export class VirtualRender extends Common {
      */
     private renderAttribute(dom:IVirtualElement, component:any,optionalData: any): boolean {
         let hasChange = false;
+        let isEvent = false;
         if(dom.tagName !== "text") {
             if(dom.props) {
                 const attributes = [];
                 // tslint:disable-next-line: forin
                 for(const attrKey in dom.props) {
-                    let dType:TypeRenderActions;
                     let attrValue = dom.props[attrKey];
-                    if(/^em\:/i.test(attrKey)) {
-                        dType = "BindAction";
-                    } else if(/^et\i/.test(attrKey)) {
-                        dType = "BindEvent";
-                    } else {
-                        dType = "BindText";
-                    }
                     for(const plugin of this.plugin) {
                         const renderEvent: TypeRenderEvent = {
                             component,
                             data: optionalData,
                             target: dom.props[attrKey],
-                            type: dType,
+                            attrKey,
                             break: false
                         };
                         const renderResult = plugin.render(renderEvent);
@@ -161,12 +154,20 @@ export class VirtualRender extends Common {
                         if(renderResult.hasChange) {
                             hasChange = true;
                         }
+                        if(renderResult.isEvent) {
+                            isEvent = true;
+                        }
                         if(renderEvent.break) {
                             break;
                         }
                     }
-                    dom.props[attrKey] = attrValue;
-                    attributes.push(`${attrKey}="${attrValue}"`);
+                    if(!isEvent) {
+                        dom.props[attrKey] = attrValue;
+                        attributes.push(`${attrKey}="${attrValue}"`);
+                    } else {
+                        const eventName = attrKey.replace(/^et\:/i, "");
+                        dom.events[eventName] = attrValue;
+                    }
                 }
             }
         } else {
@@ -176,7 +177,7 @@ export class VirtualRender extends Common {
                     component,
                     data: optionalData,
                     target: result,
-                    type: "BindText"
+                    attrKey: null
                 };
                 const renderResult = plugin.render(renderEvent);
                 if(renderResult.hasChange) {

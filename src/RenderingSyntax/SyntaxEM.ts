@@ -1,15 +1,14 @@
 import { ASyntax } from "./ASyntax";
 import { TypeRenderEvent, TypeRenderResult } from "./ISyntax";
 
-export class SyntaxEvent extends ASyntax {
+export class SyntaxEM extends ASyntax {
     render(event: TypeRenderEvent): TypeRenderResult {
-        if(/^et\:/i.test(event.attrKey)) {
-            const action = this.getValue(event.component, event.target);
+        if(/^em\:/i.test(event.attrKey)) {
+            const emValue = this.runLimitScript(event.target, event.component, event.data);
             return {
-                attrKey: event.attrKey.replace(/^et\:/i,""),
-                hasChange: typeof action === "function",
-                isEvent: true,
-                result: action
+                attrKey: event.attrKey.replace(/^em\:/i, ""),
+                hasChange: true,
+                result: emValue
             };
         } else {
             return {
