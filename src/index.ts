@@ -1,4 +1,4 @@
-export * from "./VirtualRender";
+export * from "./VirtualElement";
 export * from "./HtmlParse";
 export * from "./IVirtualElement";
 export * from "./VirtualElementsDiff";
