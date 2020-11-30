@@ -3,6 +3,7 @@ import { IHtmlNodeEventData, IVirtualElement } from "../IVirtualElement";
 import { ASyntax, SyntaxEM, SyntaxEvent, SyntaxText } from "../RenderingSyntax";
 import { TypeRenderEvent } from "../RenderingSyntax/ISyntax";
 import { VirtualElement } from "../virtualElement";
+import { VirtualRenderDiff } from "./VirtualRenderDiff";
 
 type VirtualNodeData = {
     attrs?: any;
@@ -28,12 +29,14 @@ type VirtualLoopRenderResult = {
  */
 export class VirtualRender extends Common {
     static className: string = "VirtualRender";
-    plugin:ASyntax[] = [];
+    private plugin:ASyntax[] = [];
+    private virtualDiff: VirtualRenderDiff;
     constructor(private virtualDom: VirtualElement) {
         super();
         this.plugin.push(new SyntaxText());
         this.plugin.push(new SyntaxEvent());
         this.plugin.push(new SyntaxEM());
+        this.virtualDiff = new VirtualRenderDiff();
     }
     /**
      * 渲染虚拟dom，并做diff运算标记dom状态
@@ -95,6 +98,14 @@ export class VirtualRender extends Common {
             if(hasForEach) {
                 dom.path = [...event.domData.path, kIndex];
             }
+            // 先对属性数据绑定，事件绑定，逻辑判断渲染到虚拟dom树
+            if(this.renderAttribute(dom, event.component,{
+                ...optionalData,
+                ...(dom.data || {})
+            })) {
+                // 有绑定内容渲染，更新innerHTML
+                hasRenderChange = true;
+            }
             if(dom.children.length > 0) {
                 const myEvent:VirtualRenderEvent = {
                     component: event.component,
@@ -110,18 +121,12 @@ export class VirtualRender extends Common {
                     dom.innerHTML = myResult.innerHTML;
                 }
             }
-            if(this.renderAttribute(dom, event.component,{
-                ...optionalData,
-                ...(dom.data || {})
-            })) {
-                // 有绑定内容渲染，更新innerHTML
-                hasRenderChange = true;
-            }
             if(this.isEmpty(hasRenderInnerHTML)) {
                 hasRenderInnerHTML = dom.innerHTML;
             } else {
                 hasRenderInnerHTML += "\r\n" + dom.innerHTML;
             }
+            this.virtualDiff.diff(dom, event.domData, event.oldDomData);
         }
         return {
             hasRenderChange,
@@ -184,10 +189,11 @@ export class VirtualRender extends Common {
             let result = dom.innerHTML;
             for(const plugin of this.plugin) {
                 const renderEvent: TypeRenderEvent = {
+                    attrKey: null,
+                    break: false,
                     component,
                     data: optionalData,
-                    target: result,
-                    attrKey: null
+                    target: result
                 };
                 const renderResult = plugin.render(renderEvent);
                 if(renderResult.hasChange) {

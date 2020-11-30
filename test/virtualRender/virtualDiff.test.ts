@@ -1,6 +1,6 @@
 import * as chai from "chai";
 import "mocha";
-import { HtmlParse, VirtualElement, VirtualElementsDiff, VirtualRender } from "../../src";
+import { HtmlParse, VirtualElement, VirtualElementsDiff, VirtualRender, VirtualRenderDiff } from "../../src";
 
 const htmlParse = new HtmlParse();
 const virtualElement = new VirtualElement();
@@ -12,6 +12,7 @@ const htmlCode = `<div>
     <a if="{{visible}}">Exit</a>
 </div>`;
 const virtualDoms = htmlParse.parse(htmlCode);
+const diffObj = new VirtualRenderDiff();
 describe("旧版本diff算法模块测试", () => {
     it("第一次渲染diff运算", () => {
         virtualRender.render(virtualDoms, null, {
@@ -23,6 +24,12 @@ describe("旧版本diff算法模块测试", () => {
         });
         virtualDiff.diff(virtualDoms, virtualElement.create("div"));
         chai.assert.strictEqual(virtualDoms.children[0].children[0].innerHTML as any, "demo");
+    });
+    it("字符串相似度计算, hello world - hellow world", () => {
+        chai.assert.equal(diffObj.similar("hello world", "hellow world") === 1, false);
+    });
+    it("字符串相似度计算, hello world - hello world", () => {
+        chai.assert.equal(diffObj.similar("hello world", "hellow world"), 1);
     });
     it("第一次渲染diff运算", () => {
         virtualRender.render(virtualDoms, null, {

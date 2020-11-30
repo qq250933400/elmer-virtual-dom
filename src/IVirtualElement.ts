@@ -1,6 +1,8 @@
 export const VirtualElementOperate = {
     APPEND: "APPEND",
     DELETE: "DELETE",
+    MOVE: "MOVE", // 其他属性都没有变化，只是位置有变化
+    MOVEUPDATE: "MOVEUPDATE", // 位置变化并且属性值有变化，需要移动位置并更新属性
     NORMAL: "NORMAL",
     UPDATE: "UPDATE"
 };
@@ -11,7 +13,7 @@ export interface IHtmlNodeEventData {
     handler: any;
 }
 
-export type VirtualElementOperateType = "APPEND" | "DELETE" | "NORMAL" | "UPDATE";
+export type VirtualElementOperateType = "APPEND" | "DELETE" | "NORMAL" | "UPDATE" | "MOVE" | "MOVEUPDATE";
 
 export interface IVirtualElement {
     children: IVirtualElement[];
@@ -19,6 +21,7 @@ export interface IVirtualElement {
     data?: any;
     dataSet?: any;
     delElements?: IVirtualElement[];
+    delProps?: string[]; // 需要删除的属性
     dom?:HTMLElement|SVGSVGElement|Element|Text|Comment;
     events: any[];
     innerHTML?: string;
