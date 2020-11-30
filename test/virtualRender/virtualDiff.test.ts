@@ -30,7 +30,7 @@ describe("旧版本diff算法模块测试", () => {
         chai.assert.equal(diffObj.similar("hello world", "hellow world") === 1, false);
     });
     it("字符串相似度计算, hello world - hello world", () => {
-        chai.assert.equal(diffObj.similar("hello world", "hellow world"), 1);
+        chai.assert.equal(diffObj.similar("hello world", "hellow world"), 0.917);
     });
     it("第一次渲染diff运算", () => {
         virtualRender.render(virtualDoms, null, {
