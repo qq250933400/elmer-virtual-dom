@@ -1,8 +1,8 @@
 import { Common } from "elmer-common";
-import { IHtmlNodeEventData, IVirtualElement } from "./IVirtualElement";
-import { ASyntax, SyntaxText, SyntaxEvent } from "./RenderingSyntax";
-import { TypeRenderActions, TypeRenderEvent } from "./RenderingSyntax/ISyntax";
-import { VirtualElement } from "./virtualElement";
+import { IHtmlNodeEventData, IVirtualElement } from "../IVirtualElement";
+import { ASyntax, SyntaxEM, SyntaxEvent, SyntaxText } from "../RenderingSyntax";
+import { TypeRenderEvent } from "../RenderingSyntax/ISyntax";
+import { VirtualElement } from "../virtualElement";
 
 type VirtualNodeData = {
     attrs?: any;
@@ -33,6 +33,7 @@ export class VirtualRender extends Common {
         super();
         this.plugin.push(new SyntaxText());
         this.plugin.push(new SyntaxEvent());
+        this.plugin.push(new SyntaxEM());
     }
     /**
      * 渲染虚拟dom，并做diff运算标记dom状态
@@ -73,7 +74,8 @@ export class VirtualRender extends Common {
                     forLen += forDoms.length - 1;
                     hasForEach = true;
                 } else {
-                    event.domData.children[kIndex].status === "DELETE";
+                    delete event.domData.children[kIndex].props["em:for"];
+                    event.domData.children[kIndex].status = "DELETE";
                 }
             }
             if(dom.tagName === "forEach") {
@@ -86,7 +88,7 @@ export class VirtualRender extends Common {
                     forLen += forEachDoms.length - 1;
                     hasForEach = true;
                 } else {
-                    event.domData.children[kIndex].status === "DELETE";
+                    event.domData.children[kIndex].status = "DELETE";
                 }
                 hasForEach = true;
             }
@@ -141,18 +143,22 @@ export class VirtualRender extends Common {
                 // tslint:disable-next-line: forin
                 for(const attrKey in dom.props) {
                     let attrValue = dom.props[attrKey];
+                    let newAttrKey = attrKey;
                     for(const plugin of this.plugin) {
                         const renderEvent: TypeRenderEvent = {
+                            attrKey,
+                            break: false,
                             component,
                             data: optionalData,
-                            target: dom.props[attrKey],
-                            attrKey,
-                            break: false
+                            target: dom.props[attrKey]
                         };
                         const renderResult = plugin.render(renderEvent);
                         attrValue = renderResult.result;
                         if(renderResult.hasChange) {
                             hasChange = true;
+                            if(!this.isEmpty(renderResult.attrKey)) {
+                                newAttrKey = renderResult.attrKey;
+                            }
                         }
                         if(renderResult.isEvent) {
                             isEvent = true;
@@ -162,11 +168,15 @@ export class VirtualRender extends Common {
                         }
                     }
                     if(!isEvent) {
-                        dom.props[attrKey] = attrValue;
-                        attributes.push(`${attrKey}="${attrValue}"`);
+                        dom.props[newAttrKey] = attrValue;
+                        attributes.push(`${newAttrKey}="${attrValue}"`);
+                        if(newAttrKey !== attrKey) {
+                            delete dom.props[attrKey];
+                        }
                     } else {
-                        const eventName = attrKey.replace(/^et\:/i, "");
+                        const eventName = newAttrKey.replace(/^et\:/i, "");
                         dom.events[eventName] = attrValue;
+                        delete dom.props[attrKey];
                     }
                 }
             }

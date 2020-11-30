@@ -120,4 +120,37 @@ describe("虚拟dom渲染测试", () => {
             chai.assert.strictEqual<string>(typeof vdom.children[0].events["click"], "function");
         });
     });
+    describe("em:属性标签测试", () => {
+        it("em:for属性测试, 旧版本列表循环渲染", () => {
+            const testCode = "<label em:for='let item in this.listData'>测试{{item.title}}</label>";
+            const testData = {
+                level: 2,
+                listData: []
+            };
+            const vdom = htmlParse.parse(testCode);
+            virtualRender.render(vdom, null, testData);
+            chai.assert.strictEqual(vdom.children[0].status, "DELETE");
+        });
+        it("非em:for属性测试", () => {
+            const testCode = "<label em:active='level % 2 eq 0' em:level='level'>测试{{item.title}}</label>";
+            const testData = {
+                level: 2
+            };
+            const vdom = htmlParse.parse(testCode);
+            virtualRender.render(vdom, null, testData);
+            chai.assert.strictEqual(vdom.children[0].props.active, true);
+            chai.assert.strictEqual(vdom.children[0].props.level, 2);
+        });
+        it("非em:for属性测试,绑定方法", () => {
+            const testCode = "<label em:test='demoCallback'>测试{{item.title}}</label>";
+            const testData = {
+                demoCallback: (a,b):any => {
+                    return a + b / 10;
+                }
+            };
+            const vdom = htmlParse.parse(testCode);
+            virtualRender.render(vdom, null, testData);
+            chai.assert.strictEqual(typeof vdom.children[0].props.test, "function");
+        });
+    });
 });

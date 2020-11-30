@@ -1,12 +1,19 @@
 import * as chai from "chai";
 import "mocha";
 import { HtmlParse, VirtualElement } from "../../src";
-import { VirtualRender } from "../../src/virtualRender";
 
 const htmlParse = new HtmlParse();
 const virtualElement = new VirtualElement();
-const vDom = htmlParse.parse(`<div class="testApp"><button id="myApp">Hello world</button></div>`);
+const vDom = htmlParse.parse(`<div class="testApp"><button id="myApp">Hello world</button></div>
+<div class='for level2'>
+    <input type='text'/><textarea>mytext</textarea>
+    <!--comment tag-->
+</div>`);
 describe("虚拟dom操作测试", () => {
+    it("读取注释节点", () => {
+        const commentDom = htmlParse.parse(`<!--comments--><div>new test</div>`);
+        chai.assert.strictEqual(commentDom.children[0].tagName, "<!--");
+    });
     it("创建新节点, create", () => {
         const newDom = virtualElement.create("a");
         chai.assert.strictEqual(newDom.tagName, "a");
@@ -76,7 +83,7 @@ describe("虚拟dom操作测试", () => {
     it("clear清空数据", () => {
         virtualElement.init(vDom);
         virtualElement.clear();
-        chai.assert.strictEqual(vDom.children.length, 1);
+        chai.assert.strictEqual(vDom.children.length, 2);
         chai.assert.strictEqual(virtualElement.children.length, 0);
     });
     it("释放虚拟dom数据", () => {
