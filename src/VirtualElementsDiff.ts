@@ -9,7 +9,7 @@ type CheckPropsChangeResult = {
     changeProps?: any;
 };
 /**
- * 虚拟dom diff算法实现
+ * 虚拟dom diff算法实现, 当前模块只为2.0版本以下UI框架使用，新版本弃用此模块
  * 此方法为个人学习理解所写，和现下网络流传的方法不一杨，性能方面需要在提升
  * 还未对属性和事件变化做记录，应该记录属性变化在渲染时只针对变化属性做修改，减少操作dom，提升性能
  */
@@ -43,10 +43,10 @@ export class VirtualElementsDiff extends Common {
             // 由于在解析html代码的时候默认status为append所以此处不需要做任何操作
         } else if(newElement.children.length<=0 && oldElement.children.length>0) {
             // 删除节点
-            newElement.delElements = [];
+            newElement.deleteElements = [];
             oldElement.children.map((tmpOldElement:IVirtualElement, index:number) => {
                 tmpOldElement.status = "DELETE";
-                newElement.delElements.push(tmpOldElement);
+                newElement.deleteElements.push(tmpOldElement);
             });
         } else {
             // 遍历对比
@@ -118,7 +118,7 @@ export class VirtualElementsDiff extends Common {
                     delElements.push(tmpOldItem);
                 }
             });
-            newElement.delElements = delElements;
+            newElement.deleteElements = delElements;
         }
     }
     /**
@@ -187,19 +187,5 @@ export class VirtualElementsDiff extends Common {
         }
         checkResult.changeProps = checkProps;
         return checkResult;
-    }
-    /**
-     * 更新节点（包括子元素）为append状态，不更新状态为delete的元素
-     * @param updateItem 更新节点
-     */
-    private setChildElementAppendStatus(updateItem:IVirtualElement): void {
-        if(updateItem.status !== VirtualElementOperate.DELETE) {
-            updateItem.status = "APPEND";
-            if(updateItem.children && updateItem.children.length>0) {
-                updateItem.children.map((tmpUpdateItem:IVirtualElement) => {
-                    this.setChildElementAppendStatus(tmpUpdateItem);
-                });
-            }
-        }
     }
 }

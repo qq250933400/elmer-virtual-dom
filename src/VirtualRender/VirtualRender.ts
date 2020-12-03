@@ -45,25 +45,27 @@ export class VirtualRender extends Common {
      * @param component 渲染component对象
      */
     render(domData:IVirtualElement, oldDomData:IVirtualElement,component:any): IVirtualElement {
+        const renderDom:any = JSON.parse(JSON.stringify(domData));
         this.forEach({
             component,
             doDiff: oldDomData && oldDomData.children.length > 0,
-            domData,
+            domData: renderDom,
             oldDomData,
             optionsData: null
         });
-        return domData;
+        return renderDom;
     }
     private forEach(event: VirtualRenderEvent): VirtualLoopRenderResult {
         const optionalData:any = {
             ...event.domData.data,
             ...(event.optionsData || {})
         };
+        const deleteElements: IVirtualElement[] = [];
         let hasForEach = false;
-        let updatePath = false;
         let hasRenderChange = false;
         let hasRenderInnerHTML = "";
         let forLen = event.domData.children.length;
+        let lastMatchIndex = 0;
         // tslint:disable-next-line: forin
         for(let kIndex =0; kIndex < forLen; kIndex++) {
             let dom = event.domData.children[kIndex];
@@ -73,7 +75,6 @@ export class VirtualRender extends Common {
                 if(forDoms.length > 0) {
                     event.domData.children.splice(kIndex, 1, ...forDoms);
                     dom = event.domData.children[kIndex];
-                    updatePath = true;
                     forLen += forDoms.length - 1;
                     hasForEach = true;
                 } else {
@@ -87,7 +88,6 @@ export class VirtualRender extends Common {
                 if(forEachDoms.length > 0) {
                     event.domData.children.splice(kIndex, 1, ...forEachDoms);
                     dom = event.domData.children[kIndex];
-                    updatePath = true;
                     forLen += forEachDoms.length - 1;
                     hasForEach = true;
                 } else {
@@ -106,12 +106,24 @@ export class VirtualRender extends Common {
                 // 有绑定内容渲染，更新innerHTML
                 hasRenderChange = true;
             }
+            const curAttrHtmlCode = (dom as any)["attrInnerHTML"] || "";
+            hasRenderInnerHTML += !this.isEmpty(hasRenderInnerHTML) ? "\r\n" : "";
+            hasRenderInnerHTML += /^text$/i.test(dom.tagName) ? dom.innerHTML : `<${dom.tagName} ${curAttrHtmlCode}>${dom.innerHTML}</${dom.tagName}>`;
+            const diffResult = this.virtualDiff.diff({
+                dom,
+                domIndex: kIndex,
+                lastMatchIndex,
+                oldParentDom: event.oldDomData,
+                help: event.component.help
+            });
+            lastMatchIndex = diffResult.matchIndex;
+            // --------进行下一层级的渲染和diff运算
             if(dom.children.length > 0) {
                 const myEvent:VirtualRenderEvent = {
                     component: event.component,
                     doDiff: event.doDiff,
                     domData: dom,
-                    oldDomData: event.oldDomData ? event.oldDomData.children[kIndex] : null,
+                    oldDomData: diffResult.matchDom,
                     optionsData: optionalData,
                     updateParentPath: hasForEach
                 };
@@ -121,13 +133,18 @@ export class VirtualRender extends Common {
                     dom.innerHTML = myResult.innerHTML;
                 }
             }
-            if(this.isEmpty(hasRenderInnerHTML)) {
-                hasRenderInnerHTML = dom.innerHTML;
-            } else {
-                hasRenderInnerHTML += "\r\n" + dom.innerHTML;
-            }
-            this.virtualDiff.diff(dom, event.domData, event.oldDomData);
         }
+        // 将没有做过对比的旧节点找出来并标记为删除状态
+        if(event.oldDomData && event.oldDomData.children.length > 0 && event.component.help) {
+            event.oldDomData.children.map((tmpDom: IVirtualElement​​) => {
+                // tmpDom.tagAttrs && console.log(tmpDom.tagName, tmpDom.tagAttrs.checked);
+                if(!tmpDom.tagAttrs || !tmpDom.tagAttrs.checked) {
+                    tmpDom.status = "DELETE";
+                    deleteElements.push(tmpDom);
+                }
+            });
+        }
+        event.domData.deleteElements = deleteElements;
         return {
             hasRenderChange,
             innerHTML: hasRenderInnerHTML
@@ -141,7 +158,6 @@ export class VirtualRender extends Common {
      */
     private renderAttribute(dom:IVirtualElement, component:any,optionalData: any): boolean {
         let hasChange = false;
-        let isEvent = false;
         if(dom.tagName !== "text") {
             if(dom.props) {
                 const attributes = [];
@@ -149,6 +165,7 @@ export class VirtualRender extends Common {
                 for(const attrKey in dom.props) {
                     let attrValue = dom.props[attrKey];
                     let newAttrKey = attrKey;
+                    let isEvent = false; // just for current attribute
                     for(const plugin of this.plugin) {
                         const renderEvent: TypeRenderEvent = {
                             attrKey,
@@ -158,8 +175,8 @@ export class VirtualRender extends Common {
                             target: dom.props[attrKey]
                         };
                         const renderResult = plugin.render(renderEvent);
-                        attrValue = renderResult.result;
                         if(renderResult.hasChange) {
+                            attrValue = renderResult.result;
                             hasChange = true;
                             if(!this.isEmpty(renderResult.attrKey)) {
                                 newAttrKey = renderResult.attrKey;
@@ -173,17 +190,32 @@ export class VirtualRender extends Common {
                         }
                     }
                     if(!isEvent) {
-                        dom.props[newAttrKey] = attrValue;
-                        attributes.push(`${newAttrKey}="${attrValue}"`);
-                        if(newAttrKey !== attrKey) {
-                            delete dom.props[attrKey];
+                        if(hasChange) {
+                            // 检测到有数据绑定才需要更新属性值
+                            if(newAttrKey === "if") {
+                                // if属性已经被作为是否渲染的标识，不在往外抛出属性
+                                if(attrValue) {
+                                    dom.status = "APPEND";
+                                } else {
+                                    dom.status = "DELETE";
+                                }
+                            } else {
+                                dom.props[newAttrKey] = attrValue;
+                            }
+                            if(newAttrKey !== attrKey || newAttrKey === "if") {
+                                delete dom.props[attrKey];
+                            }
                         }
+                        const toCodeAttrValue = undefined === attrValue ? "undefined" : (null === attrValue ? "null" : attrValue.toString());
+                        !/^if$/.test(newAttrKey) && attributes.push(`${newAttrKey}=${JSON.stringify(toCodeAttrValue)}`);
                     } else {
                         const eventName = newAttrKey.replace(/^et\:/i, "");
                         dom.events[eventName] = attrValue;
                         delete dom.props[attrKey];
                     }
                 }
+                // tslint:disable-next-line: curly
+                dom.attrCode = attributes.join(" "); // 临时存储innerHTML，读取值以后即可删除
             }
         } else {
             let result = dom.innerHTML;

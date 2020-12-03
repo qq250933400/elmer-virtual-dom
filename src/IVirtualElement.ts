@@ -16,19 +16,20 @@ export interface IHtmlNodeEventData {
 export type VirtualElementOperateType = "APPEND" | "DELETE" | "NORMAL" | "UPDATE" | "MOVE" | "MOVEUPDATE";
 
 export interface IVirtualElement {
+    attrCode?: string; // 用于diff判断使用
     children: IVirtualElement[];
     changeAttrs?: any;
     data?: any;
     dataSet?: any;
-    delElements?: IVirtualElement[];
-    delProps?: string[]; // 需要删除的属性
+    deleteElements?: IVirtualElement[];
+    deleteAttrs?: string[]; // 需要删除的属性
     dom?:HTMLElement|SVGSVGElement|Element|Text|Comment;
     events: any[];
     innerHTML?: string;
     isClose?: boolean;
     key?: string;
     path: number[];
-    parentPath: number[];
+    // parentPath: number[];
     props: any;
     status: VirtualElementOperateType;
     tagAttrs?: any;

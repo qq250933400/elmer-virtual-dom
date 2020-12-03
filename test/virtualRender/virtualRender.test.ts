@@ -23,8 +23,8 @@ describe("虚拟dom渲染测试", () => {
                     {title: "B", value: 2}
                 ]
             };
-            const vdom = htmlParse.parse(testCode);
-            virtualRender.render(vdom, null, testData);
+            let vdom = htmlParse.parse(testCode);
+            vdom = virtualRender.render(vdom, null, testData);
             chai.assert.equal(vdom.children[0].children.length, 2);
             chai.assert.equal(vdom.children[0].children[1].innerHTML, "1 hello B");
         });
@@ -36,8 +36,8 @@ describe("虚拟dom渲染测试", () => {
                     {title: "B", value: 2}
                 ]
             };
-            const vdom = htmlParse.parse(testCode);
-            virtualRender.render(vdom, null, testData);
+            let vdom = htmlParse.parse(testCode);
+            vdom = virtualRender.render(vdom, null, testData);
             chai.assert.equal(vdom.children[0].children.length, 2);
             chai.assert.equal(vdom.children[0].children[1].innerHTML, "1 hello B");
         });
@@ -46,8 +46,8 @@ describe("虚拟dom渲染测试", () => {
             const testData = {
                 title: "world"
             };
-            const vdom = htmlParse.parse(testCode);
-            virtualRender.render(vdom, null, testData);
+            let vdom = htmlParse.parse(testCode);
+            vdom = virtualRender.render(vdom, null, testData);
             chai.assert.equal(vdom.children[0].children[0].innerHTML, "hello world");
         });
         it("方法绑定调用", () => {
@@ -60,40 +60,40 @@ describe("虚拟dom渲染测试", () => {
                     return a + b;
                 }
             };
-            const vdom = htmlParse.parse(testCode);
-            virtualRender.render(vdom, null, testData);
-            chai.assert.strictEqual<any>(vdom.children[0].innerHTML, 300);
+            let vdom = htmlParse.parse(testCode);
+            vdom = virtualRender.render(vdom, null, testData);
+            chai.assert.strictEqual<any>(vdom.children[0].innerHTML, "300");
         });
         it("带默认值绑定渲染，绑定结果为undefined或者null时返回默认值, {{title|'default'}}", () => {
             const testCode = `<label>{{title|'default'}}</label>`;
             const testData = {};
-            const vdom = htmlParse.parse(testCode);
-            virtualRender.render(vdom, null, testData);
+            let vdom = htmlParse.parse(testCode);
+            vdom = virtualRender.render(vdom, null, testData);
             chai.assert.equal(vdom.children[0].innerHTML, "default");
         });
         it("带默认值绑定渲染，绑定结果为undefined或者null时返回默认值, {{title|true}}", () => {
             const testCode = `<label>{{title|true}}</label>`;
             const testData = {};
-            const vdom = htmlParse.parse(testCode);
-            virtualRender.render(vdom, null, testData);
-            chai.assert.strictEqual<boolean>(vdom.children[0].innerHTML as any, true);
+            let vdom = htmlParse.parse(testCode);
+            vdom = virtualRender.render(vdom, null, testData);
+            chai.assert.strictEqual<string>(vdom.children[0].innerHTML as any, "true");
         });
         it("带默认值绑定渲染，绑定结果为undefined或者null时返回默认值, {{title|level}}", () => {
             const testCode = `<label>{{title|level}}</label>`;
             const testData = {
                 level: 2
             };
-            const vdom = htmlParse.parse(testCode);
-            virtualRender.render(vdom, null, testData);
-            chai.assert.strictEqual<number>(vdom.children[0].innerHTML as any, 2);
+            let vdom = htmlParse.parse(testCode);
+            vdom = virtualRender.render(vdom, null, testData);
+            chai.assert.strictEqual<string>(vdom.children[0].innerHTML as any, "2");
         });
         it("Lambda表达式绑定值, {{level eq 2 ? 'true': 'false'}}", () => {
             const testCode = `<label>{{level eq 2 ? 'true': 'false'}}</label>`;
             const testData = {
                 level: 2
             };
-            const vdom = htmlParse.parse(testCode);
-            virtualRender.render(vdom, null, testData);
+            let vdom = htmlParse.parse(testCode);
+            vdom = virtualRender.render(vdom, null, testData);
             chai.assert.strictEqual<string>(vdom.children[0].innerHTML as any, "true");
         });
         it("逻辑判断绑定, {{level / 2 eq 1 && level % 2 eq 0}}", () => {
@@ -101,8 +101,8 @@ describe("虚拟dom渲染测试", () => {
             const testData = {
                 level: 2
             };
-            const vdom = htmlParse.parse(testCode);
-            virtualRender.render(vdom, null, testData);
+            let vdom = htmlParse.parse(testCode);
+            vdom = virtualRender.render(vdom, null, testData);
             chai.assert.strictEqual<boolean>(vdom.children[0].props["checked"], true);
         });
     });
@@ -112,11 +112,12 @@ describe("虚拟dom渲染测试", () => {
             const testData = {
                 level: 2,
                 onClick(): void {
+                    // tslint:disable-next-line: no-console
                     console.log("logicEvent");
                 }
             };
-            const vdom = htmlParse.parse(testCode);
-            virtualRender.render(vdom, null, testData);
+            let vdom = htmlParse.parse(testCode);
+            vdom = virtualRender.render(vdom, null, testData);
             chai.assert.strictEqual<string>(typeof vdom.children[0].events["click"], "function");
         });
     });
@@ -127,8 +128,8 @@ describe("虚拟dom渲染测试", () => {
                 level: 2,
                 listData: []
             };
-            const vdom = htmlParse.parse(testCode);
-            virtualRender.render(vdom, null, testData);
+            let vdom = htmlParse.parse(testCode);
+            vdom = virtualRender.render(vdom, null, testData);
             chai.assert.strictEqual(vdom.children[0].status, "DELETE");
         });
         it("非em:for属性测试", () => {
@@ -136,8 +137,8 @@ describe("虚拟dom渲染测试", () => {
             const testData = {
                 level: 2
             };
-            const vdom = htmlParse.parse(testCode);
-            virtualRender.render(vdom, null, testData);
+            let vdom = htmlParse.parse(testCode);
+            vdom = virtualRender.render(vdom, null, testData);
             chai.assert.strictEqual(vdom.children[0].props.active, true);
             chai.assert.strictEqual(vdom.children[0].props.level, 2);
         });
@@ -148,8 +149,8 @@ describe("虚拟dom渲染测试", () => {
                     return a + b / 10;
                 }
             };
-            const vdom = htmlParse.parse(testCode);
-            virtualRender.render(vdom, null, testData);
+            let vdom = htmlParse.parse(testCode);
+            vdom = virtualRender.render(vdom, null, testData);
             chai.assert.strictEqual(typeof vdom.children[0].props.test, "function");
         });
     });
