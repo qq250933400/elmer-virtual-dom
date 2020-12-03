@@ -2,7 +2,8 @@
 
 ### 简介
     解析html代码转换成json数据,对虚拟dom数据进行增加节点，删除节点，复制节点等操作
-    virtualElementsDiff对两个virtualElement做diff运算，对比差异
+    VirtualElementsDiff对两个VirtualElement做diff运算，对比差异,此模块需要单独做数据绑定，
+    VirtualRender结合VirtualRenderDiff模块在解析绑定数据时就做diff运算，减少对虚拟dom的大量循环
 ----
 ### 单元测试配置
 - 需要支持typescript语法，在tsconfig.json文件中将测试脚本所在目录添加到include配置

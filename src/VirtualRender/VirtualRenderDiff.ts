@@ -41,7 +41,6 @@ export class VirtualRenderDiff extends Common {
                 if(!tmpOld?.tagAttrs?.checked) {
                     const checkResult = this.sameNode(event.dom, tmpOld);
                     if(checkResult.sameNode) {
-                        
                         if(event.dom.status !== "DELETE") {
                             if(event.lastMatchIndex > diffIndex) {
                                 if(tmpOld.status !== "DELETE") {
@@ -64,10 +63,6 @@ export class VirtualRenderDiff extends Common {
                         this.setValue(tmpOld, "tagAttrs.checked", true);
                         // 已经match上的dom节点标记起来，防止相似节点被重复引用
                         break;
-                    } else {
-                        if(event.help && tmpOld.tagName === "text") {
-                            console.log(checkResult.similarPercent, tmpOld.tagName, event.dom.tagName, diffIndex, event.lastMatchIndex);
-                        }
                     }
                 }
             }
@@ -119,6 +114,9 @@ export class VirtualRenderDiff extends Common {
         const res = (1 - d[n][m] / l);
         return parseFloat(res.toFixed(f));
     }
+    private min(a:number,b:number, c: number):number {
+        return a < b ? (a < c ? a : c) : (b < c ? b : c);
+    }
     private sameNode(newDom: IVirtualElement​​, oldDom: IVirtualElement): TypeCheckSameNodeResult {
         const result: TypeCheckSameNodeResult = {
             deleteProps: [],
@@ -137,8 +135,30 @@ export class VirtualRenderDiff extends Common {
             } else if(this.isEmpty(newDom.props.key) && this.isEmpty(oldDom.props.key)) {
                 // 当key都为空时，只要tagName相同即认为是相同的节点
                 // innerHTML相似度达到80以上才算做相同节点
-                const smpercent = !/^text$/i.test(newDom.tagName) ? this.similar(newDom.attrCode, oldDom.attrCode) : this.similar(newDom.innerHTML, oldDom.innerHTML);
-                // 当两个节点tagName相同，并且都是text节点的时候需要对比innerHTML属性，text节点没有attributes
+                let smpercent = 0;
+                if(!/^text$/i.test(newDom.tagName)) {
+                    // 非文本节点走一下判断
+                    if(newDom.children.length === oldDom.children.length) {
+                        const insm = this.similar(newDom.innerHTML, oldDom.innerHTML);
+                        const attrsm = this.similar(newDom.attrCode, oldDom.attrCode);
+                        // 子节点数量一致的时候通过innerHTML的相似度和属性的相似度来判断
+                        // 当没有设置任何属性值时用innerHTML的相似度来判断
+                        // 当设置有属性时通过属性相似度和innerHTML的相似度哪个大取哪个
+                        if(!this.isEmpty(newDom.attrCode)) {
+                            smpercent = Math.max(insm, attrsm);
+                        } else {
+                            smpercent = insm;
+                        }
+                    } else {
+                        // 子节点数量不一致，判断属性即可，不考虑innerHTML的判断，子节点数量不一致基本可判定未不相同的节点
+                        smpercent = this.similar(newDom.attrCode, oldDom.attrCode);
+                    }
+                } else {
+                    // 文本节点对比InnerHTML
+                    smpercent = this.similar(newDom.innerHTML, oldDom.innerHTML);
+                }
+                // const smpercent = !/^text$/i.test(newDom.tagName) ? this.similar(newDom.attrCode, oldDom.attrCode) : this.similar(newDom.innerHTML, oldDom.innerHTML);
+                // // 当两个节点tagName相同，并且都是text节点的时候需要对比innerHTML属性，text节点没有attributes
                 result.sameNode = smpercent >= 0.85;
                 result.similarPercent = smpercent;
             }
@@ -177,8 +197,5 @@ export class VirtualRenderDiff extends Common {
             }
         }
         return result;
-    }
-    private min(a:number,b:number, c: number):number {
-        return a < b ? (a < c ? a : c) : (b < c ? b : c);
     }
 }

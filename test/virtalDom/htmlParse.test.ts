@@ -21,7 +21,7 @@ describe("Html代码解析类测试", () => {
             chai.assert.equal(result.children[0].innerHTML, "test comment");
         });
     });
-    describe("img标签解析测试<img src='aa.jpg'/>",()=>{
+    describe("img标签解析测试<img src='aa.jpg'/>",()=> {
         before(() => {
             result = htmlParse.parse("<img src='aa.jpg'/>");
         });
@@ -70,17 +70,17 @@ describe("Html代码解析类测试", () => {
             chai.assert.equal(dom.children[0].children[0].tagName, "a");
             chai.assert.equal(dom.children[1].children[0].tagName, "a");
         });
-        it("text标签解析测试", ()=>{
+        it("text标签解析测试", ()=> {
             chai.assert.equal(dom.children[0].children[0].children[0].tagName, "text");
         });
-        it("text标签内容解析测试", ()=>{
+        it("text标签内容解析测试", ()=> {
             chai.assert.equal(dom.children[0].children[0].children[0].innerHTML, "test item 1");
         });
         describe("i标签解析测试", () => {
-            it("标签解析测试", ()=>{
+            it("标签解析测试", ()=> {
                 chai.assert.equal(dom.children[0].children[0].children[1].tagName, "i");
             });
-            it("标签内容解析测试", ()=>{
+            it("标签内容解析测试", ()=> {
                 chai.assert.equal(dom.children[0].children[0].children[1].children[0].innerHTML, "aabb");
             });
         });

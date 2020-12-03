@@ -112,9 +112,9 @@ export class VirtualRender extends Common {
             const diffResult = this.virtualDiff.diff({
                 dom,
                 domIndex: kIndex,
+                help: event.component.help,
                 lastMatchIndex,
-                oldParentDom: event.oldDomData,
-                help: event.component.help
+                oldParentDom: event.oldDomData
             });
             lastMatchIndex = diffResult.matchIndex;
             // --------进行下一层级的渲染和diff运算

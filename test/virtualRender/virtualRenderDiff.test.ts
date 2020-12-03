@@ -69,5 +69,27 @@ describe("2.0版本diff算法测试", () => {
             chai.assert.strictEqual(vDomDiff2.deleteElements.length, 1);
             chai.assert.strictEqual(vDomDiff2.deleteElements[0].tagName, "i");
         });
+        it("对比两个属性值为object的节点", () => {
+            const testCode1 = `<button data-value="{{info}}">Hello world</button><label>DEMO</label>`;
+            const testCode2 = `<button data-value="{{info}}">Hello world</button><label>DEMO</label>`;
+            const vDom1 = htmlParse.parse(testCode1);
+            const vDom2 = htmlParse.parse(testCode2);
+            const vDomDiff1 = virtualRender.render(vDom1, null, {info: {title: "App"}});
+            const vDomDiff2 = virtualRender.render(vDom2, vDomDiff1, {info: {title: "App1"}});
+            chai.assert.strictEqual(typeof vDomDiff2.children[0].changeAttrs["data-value"], "object");
+            chai.assert.strictEqual(vDomDiff2.children[0].changeAttrs["data-value"]["title"], "App1");
+        });
+        it("对比相同节点在不同位置的情况", () => {
+            const testCode1 = `<button data-value="{{info}}">Hello world</button><label test='l'>DEMO</label><i for="demoApp">APP</i>`;
+            const testCode2 = `<label>DEMO</label><i for="demoApp">APP</i><button data-value="{{info}}">Hello world</button>`;
+            const vDom1 = htmlParse.parse(testCode1);
+            const vDom2 = htmlParse.parse(testCode2);
+            const vDomDiff1 = virtualRender.render(vDom1, null, {info: {title: "App"}});
+            const vDomDiff2 = virtualRender.render(vDom2, vDomDiff1, {info: {title: "App1"}, help: true});
+            chai.assert.strictEqual(vDomDiff2.children[0].status, "UPDATE");
+            chai.assert.strictEqual(vDomDiff2.children[2].status, "MOVEUPDATE");
+            chai.assert.strictEqual(vDomDiff2.children[1].status, "NORMAL");
+            chai.assert.strictEqual(vDomDiff2.children[0].deleteAttrs.length, 1);
+        });
     });
 });

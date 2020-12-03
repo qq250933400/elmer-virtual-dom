@@ -1,6 +1,6 @@
 import * as chai from "chai";
 import "mocha";
-import { HtmlParse } from "../src/HtmlParse";
+import { HtmlParse } from "../src";
 
 describe("typescript unit test", () => {
     it("do some test", () => {
