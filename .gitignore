@@ -4,6 +4,7 @@
 yarn.lock
 /example/
 /lib/
+/types/
 /mochawesome-report/
 /.nyc_output/
 /coverage/

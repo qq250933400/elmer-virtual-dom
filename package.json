@@ -1,10 +1,10 @@
 {
     "name": "elmer-virtual-dom",
-    "version": "1.0.10",
+    "version": "2.0.0",
     "description": "htmlParse and virtualDom diff",
-    "typings": "lib/src/index.d.ts",
-    "main": "lib/src/index.js",
-    "module": "lib/src/index.js",
+    "typings": "types/index.d.ts",
+    "main": "lib/index.js",
+    "module": "lib/index.js",
     "scripts": {
         "testReport": "mocha ./test/index.test.js ./test/**/*.test.js --reporter mochawesome",
         "test": "mocha --reporter mochawesome",
