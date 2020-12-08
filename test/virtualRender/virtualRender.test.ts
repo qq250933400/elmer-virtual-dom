@@ -105,6 +105,11 @@ describe("虚拟dom渲染测试", () => {
             vdom = virtualRender.render(vdom, null, testData);
             chai.assert.strictEqual<boolean>(vdom.children[0].props["checked"], true);
         });
+        it("跨层级的innerHTML更新, <label><span>A{{level}}</span></label>", () => {
+            const vdom = htmlParse.parse(`<label><span>A{{level}}</span></label>`);
+            const vdomRender = virtualRender.render(vdom, null, {level:2});
+            chai.assert.strictEqual(vdomRender.children[0].innerHTML, "<span >A2</span>");
+        });
     });
     describe("事件渲染测试", () => {
         it("单击事件测试", () => {

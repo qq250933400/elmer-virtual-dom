@@ -106,9 +106,7 @@ export class VirtualRender extends Common {
                 // 有绑定内容渲染，更新innerHTML
                 hasRenderChange = true;
             }
-            const curAttrHtmlCode = (dom as any)["attrInnerHTML"] || "";
-            hasRenderInnerHTML += !this.isEmpty(hasRenderInnerHTML) ? "\r\n" : "";
-            hasRenderInnerHTML += /^text$/i.test(dom.tagName) ? dom.innerHTML : `<${dom.tagName} ${curAttrHtmlCode}>${dom.innerHTML}</${dom.tagName}>`;
+            // console.log(dom.tagName, dom.innerHTML);
             const diffResult = this.virtualDiff.diff({
                 dom,
                 domIndex: kIndex,
@@ -131,12 +129,16 @@ export class VirtualRender extends Common {
                 if(myResult.hasRenderChange) {
                     // 数据有变化更新innerHTML
                     dom.innerHTML = myResult.innerHTML;
+                    hasRenderChange = true;
                 }
             }
+            const curAttrHtmlCode = dom.attrCode || "";
+            hasRenderInnerHTML += !this.isEmpty(hasRenderInnerHTML) ? "\r\n" : "";
+            hasRenderInnerHTML += /^text$/i.test(dom.tagName) ? dom.innerHTML : `<${dom.tagName} ${curAttrHtmlCode}>${dom.innerHTML}</${dom.tagName}>`;
         }
         // 将没有做过对比的旧节点找出来并标记为删除状态
         if(event.oldDomData && event.oldDomData.children.length > 0 && event.component.help) {
-            event.oldDomData.children.map((tmpDom: IVirtualElement​​) => {
+            event.oldDomData.children.map((tmpDom: IVirtualElement) => {
                 // tmpDom.tagAttrs && console.log(tmpDom.tagName, tmpDom.tagAttrs.checked);
                 if(!tmpDom.tagAttrs || !tmpDom.tagAttrs.checked) {
                     tmpDom.status = "DELETE";
