@@ -163,6 +163,7 @@ export class VirtualRender extends Common {
         if(dom.tagName !== "text") {
             if(dom.props) {
                 const attributes = [];
+                const dataSet = {};
                 // tslint:disable-next-line: forin
                 for(const attrKey in dom.props) {
                     let attrValue = dom.props[attrKey];
@@ -208,6 +209,9 @@ export class VirtualRender extends Common {
                                 delete dom.props[attrKey];
                             }
                         }
+                        if(/^data\-/.test(newAttrKey)) {
+                            dataSet[newAttrKey.replace(/^data\-/, "")] = attrValue;
+                        }
                         const toCodeAttrValue = undefined === attrValue ? "undefined" : (null === attrValue ? "null" : attrValue.toString());
                         !/^if$/.test(newAttrKey) && attributes.push(`${newAttrKey}=${JSON.stringify(toCodeAttrValue)}`);
                     } else {
@@ -216,6 +220,7 @@ export class VirtualRender extends Common {
                         delete dom.props[attrKey];
                     }
                 }
+                dom.dataSet = dataSet;
                 // tslint:disable-next-line: curly
                 dom.attrCode = attributes.join(" "); // 临时存储innerHTML，读取值以后即可删除
             }

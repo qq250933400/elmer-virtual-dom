@@ -10,14 +10,14 @@ type TypeCheckSameNodeResult = {
 };
 
 type TypeDiffEvent = {
-    dom: IVirtualElement​​;
+    dom: IVirtualElement;
     domIndex: number;
     lastMatchIndex: number;
-    oldParentDom: IVirtualElement​​;
+    oldParentDom: IVirtualElement;
     help?: boolean;
 };
 type TypeDiffResult = {
-    matchDom: IVirtualElement​​;
+    matchDom: IVirtualElement;
     matchIndex: number;
 };
 
@@ -25,9 +25,9 @@ export class VirtualRenderDiff extends Common {
     /**
      * Diff运算，指定dom查找在旧dom树中的位置，并对比将要做的操作
      * @param {object} event diff参数
-     * @param {IVirtualElement​​} event.dom 要做diff运算的节点
+     * @param {IVirtualElement} event.dom 要做diff运算的节点
      */
-    diff(event: ​​TypeDiffEvent): TypeDiffResult {
+    diff(event: TypeDiffEvent): TypeDiffResult {
         const oldParentDom = event.oldParentDom;
         const result:TypeDiffResult = {
             matchDom: null,
@@ -60,6 +60,7 @@ export class VirtualRenderDiff extends Common {
                         }
                         result.matchDom = tmpOld;
                         result.matchIndex = diffIndex;
+                        event.dom.dom = tmpOld.dom;
                         this.setValue(tmpOld, "tagAttrs.checked", true);
                         // 已经match上的dom节点标记起来，防止相似节点被重复引用
                         break;
@@ -117,7 +118,7 @@ export class VirtualRenderDiff extends Common {
     private min(a:number,b:number, c: number):number {
         return a < b ? (a < c ? a : c) : (b < c ? b : c);
     }
-    private sameNode(newDom: IVirtualElement​​, oldDom: IVirtualElement): TypeCheckSameNodeResult {
+    private sameNode(newDom: IVirtualElement, oldDom: IVirtualElement): TypeCheckSameNodeResult {
         const result: TypeCheckSameNodeResult = {
             deleteProps: [],
             hasChange: false,
@@ -139,7 +140,9 @@ export class VirtualRenderDiff extends Common {
                 if(!/^text$/i.test(newDom.tagName)) {
                     // 非文本节点走一下判断
                     if(newDom.children.length === oldDom.children.length) {
-                        const insm = this.similar(newDom.innerHTML, oldDom.innerHTML);
+                        // 当两个节点的属性都是空的，为了进一步确定是否是同一个节点，取子节点的tagName做判断就行，不考虑更下一层，否则过于复杂
+                        // 由于是边渲染边做diff运算，新节点的子节点还没有渲染所以有数据绑定的属性和旧节点相差很大，只需要判断结构是否相同就行
+                        const insm = this.compareChildrenStructure(newDom, oldDom);
                         const attrsm = this.similar(newDom.attrCode, oldDom.attrCode);
                         // 子节点数量一致的时候通过innerHTML的相似度和属性的相似度来判断
                         // 当没有设置任何属性值时用innerHTML的相似度来判断
@@ -155,7 +158,7 @@ export class VirtualRenderDiff extends Common {
                     }
                 } else {
                     // 文本节点对比InnerHTML
-                    smpercent = this.similar(newDom.innerHTML, oldDom.innerHTML);
+                    smpercent = newDom.innerHTML === oldDom.innerHTML ? 1 : 0.9;
                 }
                 // const smpercent = !/^text$/i.test(newDom.tagName) ? this.similar(newDom.attrCode, oldDom.attrCode) : this.similar(newDom.innerHTML, oldDom.innerHTML);
                 // // 当两个节点tagName相同，并且都是text节点的时候需要对比innerHTML属性，text节点没有attributes
@@ -163,39 +166,63 @@ export class VirtualRenderDiff extends Common {
                 result.similarPercent = smpercent;
             }
             if(result.sameNode) { // 判断为同一个节点时才对属性做判断，不是同一个节点直接下移判断
-                const newProps:any = (newDom.props || {});
-                const oldProps: any = (oldDom.props || {});
-                const newPropsKeys: any[] = Object.keys(newProps);
-                const oldPropsKeys: any[] = Object.keys(oldProps);
-                const updateProps: any = {};
-                oldPropsKeys.map((tmpKey: string) => {
-                    if(newPropsKeys.indexOf(tmpKey)>=0) {
-                        // 新，旧节点都有此属性时，属性值不同更新属性为新节点属性旧节点属性丢弃
-                        // 新旧节点属性值相等，从updateProps属性删除
-                        if(this.isObject(newProps[tmpKey]) && this.isObject(newProps[tmpKey])) {
-                            // 两个属性值都是Object对象，使用isEqual比较
-                            if(!this.isEqual(newProps[tmpKey], oldProps[tmpKey])) {
-                                // 当两个属性值不相等时不需要做更新, 将变化的属性更新到update list
-                                result.hasChange = true;
-                                updateProps[tmpKey] = newProps[tmpKey];
+                if(newDom.tagName !== "text") {
+                    const newProps:any = (newDom.props || {});
+                    const oldProps: any = (oldDom.props || {});
+                    const newPropsKeys: any[] = Object.keys(newProps);
+                    const oldPropsKeys: any[] = Object.keys(oldProps);
+                    const updateProps: any = {};
+                    oldPropsKeys.map((tmpKey: string) => {
+                        if(newPropsKeys.indexOf(tmpKey)>=0) {
+                            // 新，旧节点都有此属性时，属性值不同更新属性为新节点属性旧节点属性丢弃
+                            // 新旧节点属性值相等，从updateProps属性删除
+                            if(this.isObject(newProps[tmpKey]) && this.isObject(newProps[tmpKey])) {
+                                // 两个属性值都是Object对象，使用isEqual比较
+                                if(!this.isEqual(newProps[tmpKey], oldProps[tmpKey])) {
+                                    // 当两个属性值不相等时不需要做更新, 将变化的属性更新到update list
+                                    result.hasChange = true;
+                                    updateProps[tmpKey] = newProps[tmpKey];
+                                }
+                            } else if(!this.isObject(newProps[tmpKey]) && !this.isObject(newProps[tmpKey])) {
+                                // 两个属性值都不是Object时直接使用===做比较， 其中一个是Object,另一个不是Object,即不相等，默认放置在要更新的对象上
+                                if(newProps[tmpKey] !== oldProps[tmpKey]) {
+                                    // 当两个属性值相等时不需要做更新
+                                    result.hasChange = true;
+                                    updateProps[tmpKey] = newProps[tmpKey];
+                                }
                             }
-                        } else if(!this.isObject(newProps[tmpKey]) && !this.isObject(newProps[tmpKey])) {
-                            // 两个属性值都不是Object时直接使用===做比较， 其中一个是Object,另一个不是Object,即不相等，默认放置在要更新的对象上
-                            if(newProps[tmpKey] !== oldProps[tmpKey]) {
-                                // 当两个属性值相等时不需要做更新
-                                result.hasChange = true;
-                                updateProps[tmpKey] = newProps[tmpKey];
-                            }
+                        } else {
+                            // 旧节点属性不在新节点属性列表中，需要添加至要删除的属性列表中
+                            result.hasChange = true;
+                            result.deleteProps.push(tmpKey);
                         }
-                    } else {
-                        // 旧节点属性不在新节点属性列表中，需要添加至要删除的属性列表中
+                    });
+                    result.updateProps = updateProps;
+                } else {
+                    if(result.similarPercent !== 1) {
                         result.hasChange = true;
-                        result.deleteProps.push(tmpKey);
                     }
-                });
-                result.updateProps = updateProps;
+                }
             }
         }
         return result;
+    }
+    /**
+     * 取第一层子节点进一步判断是否为同一个节点，不考虑更下一层
+     * @param vdom 判断节点
+     */
+    private compareChildrenStructure(newDom:IVirtualElement, oldDom: IVirtualElement): number {
+        if(newDom.children.length === oldDom.children.length) {
+            if(newDom.children.length > 0) {
+                for(let i=0;i<newDom.children.length;i++) {
+                    if(newDom.children[i].tagName !== oldDom.children[i].tagName) {
+                        return 0;
+                    }
+                }
+                return 1;
+            }
+        } else {
+            return 0;
+        }
     }
 }

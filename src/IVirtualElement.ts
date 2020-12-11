@@ -24,7 +24,7 @@ export interface IVirtualElement {
     deleteElements?: IVirtualElement[];
     deleteAttrs?: string[]; // 需要删除的属性
     dom?:HTMLElement|SVGSVGElement|Element|Text|Comment;
-    events: any[];
+    events: any;
     innerHTML?: string;
     isClose?: boolean;
     key?: string;
