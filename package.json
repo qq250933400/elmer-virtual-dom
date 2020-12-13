@@ -1,6 +1,6 @@
 {
     "name": "elmer-virtual-dom",
-    "version": "2.0.0",
+    "version": "2.0.1",
     "description": "htmlParse and virtualDom diff",
     "typings": "types/index.d.ts",
     "main": "lib/index.js",
@@ -11,7 +11,6 @@
         "cover": "nyc --reporter=html mocha",
         "lib": "tsc -w",
         "build": "tsc",
-        "static": "node ./bin/index.js --static"
     },
     "keywords": [
         "javascript",

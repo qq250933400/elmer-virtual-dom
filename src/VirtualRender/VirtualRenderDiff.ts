@@ -15,6 +15,7 @@ type TypeDiffEvent = {
     lastMatchIndex: number;
     oldParentDom: IVirtualElement;
     help?: boolean;
+    isLastNode: boolean;
 };
 type TypeDiffResult = {
     matchDom: IVirtualElement;
@@ -61,6 +62,7 @@ export class VirtualRenderDiff extends Common {
                         result.matchDom = tmpOld;
                         result.matchIndex = diffIndex;
                         event.dom.dom = tmpOld.dom;
+                        event.dom.virtualID = tmpOld.virtualID; // 保留旧的虚拟dom id方便查询旧节点
                         this.setValue(tmpOld, "tagAttrs.checked", true);
                         // 已经match上的dom节点标记起来，防止相似节点被重复引用
                         break;

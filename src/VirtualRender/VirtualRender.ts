@@ -112,7 +112,8 @@ export class VirtualRender extends Common {
                 domIndex: kIndex,
                 help: event.component.help,
                 lastMatchIndex,
-                oldParentDom: event.oldDomData
+                oldParentDom: event.oldDomData,
+                isLastNode: kIndex === forLen - 1
             });
             lastMatchIndex = diffResult.matchIndex;
             // --------进行下一层级的渲染和diff运算
@@ -137,7 +138,7 @@ export class VirtualRender extends Common {
             hasRenderInnerHTML += /^text$/i.test(dom.tagName) ? dom.innerHTML : `<${dom.tagName} ${curAttrHtmlCode}>${dom.innerHTML}</${dom.tagName}>`;
         }
         // 将没有做过对比的旧节点找出来并标记为删除状态
-        if(event.oldDomData && event.oldDomData.children.length > 0 && event.component.help) {
+        if(event.oldDomData && event.oldDomData.children.length > 0) {
             event.oldDomData.children.map((tmpDom: IVirtualElement) => {
                 // tmpDom.tagAttrs && console.log(tmpDom.tagName, tmpDom.tagAttrs.checked);
                 if(!tmpDom.tagAttrs || !tmpDom.tagAttrs.checked) {
