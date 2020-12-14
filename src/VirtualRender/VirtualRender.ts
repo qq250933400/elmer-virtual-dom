@@ -141,7 +141,7 @@ export class VirtualRender extends Common {
         if(event.oldDomData && event.oldDomData.children.length > 0) {
             event.oldDomData.children.map((tmpDom: IVirtualElement) => {
                 // tmpDom.tagAttrs && console.log(tmpDom.tagName, tmpDom.tagAttrs.checked);
-                if(!tmpDom.tagAttrs || !tmpDom.tagAttrs.checked) {
+                if(!tmpDom.isDiff) {
                     tmpDom.status = "DELETE";
                     deleteElements.push(tmpDom);
                 }

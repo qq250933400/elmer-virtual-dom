@@ -39,7 +39,7 @@ export class VirtualRenderDiff extends Common {
         if(oldParentDom && oldParentDom.children && oldParentDom.children.length > 0) {
             for(let diffIndex = 0;diffIndex<oldParentDom.children.length;diffIndex++) {
                 const tmpOld = oldParentDom.children[diffIndex];
-                if(!tmpOld?.tagAttrs?.checked) {
+                if(!tmpOld.isDiff) {
                     const checkResult = this.sameNode(event.dom, tmpOld);
                     if(checkResult.sameNode) {
                         if(event.dom.status !== "DELETE") {
@@ -63,7 +63,8 @@ export class VirtualRenderDiff extends Common {
                         result.matchIndex = diffIndex;
                         event.dom.dom = tmpOld.dom;
                         event.dom.virtualID = tmpOld.virtualID; // 保留旧的虚拟dom id方便查询旧节点
-                        this.setValue(tmpOld, "tagAttrs.checked", true);
+                        event.dom.tagAttrs = tmpOld.tagAttrs;
+                        tmpOld.isDiff = true;
                         // 已经match上的dom节点标记起来，防止相似节点被重复引用
                         break;
                     }

@@ -27,6 +27,7 @@ export interface IVirtualElement {
     events: any;
     innerHTML?: string;
     isClose?: boolean;
+    isDiff?: boolean;
     key?: string;
     path: number[];
     // parentPath: number[];

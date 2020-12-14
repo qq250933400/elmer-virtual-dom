@@ -17,6 +17,23 @@ export class HtmlParse extends Common {
         /^input$/i,/^br$/i,/^hr$/i,/^img$/i,/^meta$/i,/^\!DOCTYPE$/i
     ];
     private rootNodes:any = {};
+    constructor() {
+        super();
+    }
+    mergeArray(array1: any[], array2: any[]): any[] {
+        const resultData: any[] = [];
+        if(array1 && array1.length > 0) {
+            array1.map((item:any) => {
+                resultData.push(item);
+            });
+        }
+        if(array2 && array2.length > 0) {
+            array2.map((item:any) => {
+                resultData.push(item);
+            });
+        }
+        return resultData;
+    }
     parse(htmlCode: string, selector?: string): IVirtualElement {
         const result:IVirtualElement = {
             children: [],
@@ -92,7 +109,7 @@ export class HtmlParse extends Common {
                         events: [],
                         innerHTML: txt,
                         isClose: true,
-                        path:[...parentNode.path, parentNode.children.length],
+                        path: this.mergeArray(parentNode.path,[parentNode.children.length]),
                         props: {},
                         status: "APPEND",
                         tagName: "text"
@@ -119,7 +136,7 @@ export class HtmlParse extends Common {
             events: [],
             innerHTML: "",
             isClose: true,
-            path:[...parentNode.path, parentNode.children.length],
+            path:this.mergeArray(parentNode.path,[parentNode.children.length]),
             props: {},
             status: "APPEND",
             tagName: "<!--"
@@ -167,7 +184,7 @@ export class HtmlParse extends Common {
                     events: attrsResult.events,
                     innerHTML: "",
                     isClose: isAutoClose,
-                    path:[...parentNode.path, parentNode.children.length],
+                    path: this.mergeArray(parentNode.path,[parentNode.children.length]),
                     props: attrsResult.attrs,
                     status: "APPEND",
                     tagName
@@ -200,7 +217,7 @@ export class HtmlParse extends Common {
                         events: [],
                         innerHTML: "",
                         isClose: isAutoClose,
-                        path:[...parentNode.path, parentNode.children.length],
+                        path: this.mergeArray(parentNode.path,[parentNode.children.length]),
                         props: {},
                         status: "APPEND",
                         tagName
@@ -247,7 +264,7 @@ export class HtmlParse extends Common {
                         events: [],
                         innerHTML: "",
                         isClose: true,
-                        path:[...parentNode.path, parentNode.children.length],
+                        path: this.mergeArray(parentNode.path,[parentNode.children.length]),
                         props: {},
                         status: "APPEND",
                         tagName: "!DOCTYPE"
