@@ -38,7 +38,7 @@ export class HtmlParse extends Common {
         const result:IVirtualElement = {
             children: [],
             data: {},
-            events: [],
+            events: {},
             path:[],
             props: {},
             status: "APPEND",
@@ -106,7 +106,7 @@ export class HtmlParse extends Common {
                     let leftHtmlCode = htmlCode.substr(lStart);
                     parentNode.children.push({
                         children: [],
-                        events: [],
+                        events: {},
                         innerHTML: txt,
                         isClose: true,
                         path: this.mergeArray(parentNode.path,[parentNode.children.length]),
@@ -133,7 +133,7 @@ export class HtmlParse extends Common {
         const result:IVirtualElement = {
             children: [],
             data: {},
-            events: [],
+            events: {},
             innerHTML: "",
             isClose: true,
             path:this.mergeArray(parentNode.path,[parentNode.children.length]),
@@ -214,7 +214,7 @@ export class HtmlParse extends Common {
                     let newNode:IVirtualElement = {
                         children: [],
                         data: {},
-                        events: [],
+                        events: {},
                         innerHTML: "",
                         isClose: isAutoClose,
                         path: this.mergeArray(parentNode.path,[parentNode.children.length]),
@@ -261,7 +261,7 @@ export class HtmlParse extends Common {
                     let newNode:IVirtualElement = {
                         children: [],
                         data: {},
-                        events: [],
+                        events: {},
                         innerHTML: "",
                         isClose: true,
                         path: this.mergeArray(parentNode.path,[parentNode.children.length]),

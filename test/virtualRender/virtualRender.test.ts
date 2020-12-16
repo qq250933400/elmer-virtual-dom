@@ -1,9 +1,9 @@
 import * as chai from "chai";
 import "mocha";
-import { HtmlParse, VirtualElement, VirtualRender } from "../../src";
+import { HtmlParse, VirtualNode, VirtualRender } from "../../src";
 
 const htmlParse = new HtmlParse();
-const virtualElement = new VirtualElement();
+const virtualElement = new VirtualNode();
 const virtualRender = new VirtualRender(virtualElement);
 
 describe("虚拟dom渲染测试", () => {
@@ -157,6 +157,18 @@ describe("虚拟dom渲染测试", () => {
             let vdom = htmlParse.parse(testCode);
             vdom = virtualRender.render(vdom, null, testData);
             chai.assert.strictEqual(typeof vdom.children[0].props.test, "function");
+        });
+        it("渲染前事件监听", (done) => {
+            const testCode = "<label em:test='demoCallback'>测试{{item.title}}</label>";
+            const vdom = htmlParse.parse(testCode);
+            const ssid = virtualRender.guid();
+            const evtId = virtualRender.bind(ssid, "onBeforeRender", () => {
+                done();
+            });
+            virtualRender.render(vdom, null, {}, {
+                sessionId: ssid
+            });
+            virtualRender.unBind(ssid, "onBeforeRender", evtId);
         });
     });
 });

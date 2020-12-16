@@ -1,9 +1,9 @@
 import * as chai from "chai";
 import "mocha";
-import { HtmlParse, VirtualElement, VirtualRender, VirtualRenderDiff } from "../../src";
+import { HtmlParse, VirtualNode, VirtualRender, VirtualRenderDiff } from "../../src";
 
 const htmlParse = new HtmlParse();
-const virtualElement = new VirtualElement();
+const virtualElement = new VirtualNode();
 const virtualRender = new VirtualRender(virtualElement);
 
 describe("2.0版本diff算法测试", () => {
@@ -90,6 +90,34 @@ describe("2.0版本diff算法测试", () => {
             chai.assert.strictEqual(vDomDiff2.children[2].status, "MOVEUPDATE");
             chai.assert.strictEqual(vDomDiff2.children[1].status, "NORMAL");
             chai.assert.strictEqual(vDomDiff2.children[0].deleteAttrs.length, 1);
+        });
+        it("事件绑定测试", () => {
+            const testCode = `<button et:click="onClick">Hello world {{title}}</button>`;
+            const vdom = htmlParse.parse(testCode);
+            const vdomDiff1 = virtualRender.render(vdom, null, {
+                title: "test1",
+                onClick: () => 12
+            });
+            const vdomDiff2 = virtualRender.render(vdom, vdomDiff1, {
+                title: "test2",
+                onClick: () => 12
+            });
+            chai.assert.strictEqual(typeof vdomDiff1.children[0].events.click, "function");
+            chai.assert.strictEqual(typeof vdomDiff2.children[0].events.click, "function");
+        });
+        it("替换context事件测试", () => {
+            const testCode1 = `<button et:click="onClick">Hello world {{title}}</button>`;
+            const testCode2 = `<div><context /></div>`;
+            const vdom1 = htmlParse.parse(testCode1);
+            const vdom2 = htmlParse.parse(testCode2);
+            const vdomDiff1 = virtualRender.render(vdom1, null, {
+                title: "test1",
+                onClick: () => 12
+            });
+            const sessionId = virtualElement.init(vdom2.children[0]);
+            virtualElement.replaceAt(sessionId, vdomDiff1.children[0], 0);
+            chai.assert.strictEqual(typeof vdom2.children[0].children[0].events.click, "function");
+            chai.assert.strictEqual(vdom2.children[0].innerHTML, `<button >Hello world test1</button>\r\n`);
         });
     });
 });

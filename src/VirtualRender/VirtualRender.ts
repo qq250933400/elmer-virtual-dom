@@ -2,14 +2,9 @@ import { Common } from "elmer-common";
 import { IHtmlNodeEventData, IVirtualElement } from "../IVirtualElement";
 import { ASyntax, SyntaxEM, SyntaxEvent, SyntaxText } from "../RenderingSyntax";
 import { TypeRenderEvent } from "../RenderingSyntax/ISyntax";
-import { VirtualElement } from "../virtualElement";
+import { VirtualNode } from "./VirtualNode";
 import { VirtualRenderDiff } from "./VirtualRenderDiff";
 
-type VirtualNodeData = {
-    attrs?: any;
-    events?:IHtmlNodeEventData[],
-    dataSet?: any;
-};
 type VirtualRenderEvent = {
     domData:IVirtualElement;
     oldDomData:IVirtualElement;
@@ -18,10 +13,16 @@ type VirtualRenderEvent = {
     optionsData?: any;
     hasChange?: boolean;
     updateParentPath?: boolean;
+    rootPath: number[];
 };
 type VirtualLoopRenderResult = {
     hasRenderChange: boolean;
     innerHTML: string;
+};
+type TypeVirtualRenderEventType = "onBeforeRender";
+type TypeVirtualRenderOptions = {
+    rootPath?: number[],
+    sessionId?: string
 };
 /**
  * v2.0.0
@@ -29,14 +30,42 @@ type VirtualLoopRenderResult = {
  */
 export class VirtualRender extends Common {
     static className: string = "VirtualRender";
-    private plugin:ASyntax[] = [];
+    plugin:ASyntax[] = [];
     private virtualDiff: VirtualRenderDiff;
-    constructor(private virtualDom: VirtualElement) {
+    private events: any = {};
+    constructor(private virtualDom: VirtualNode) {
         super();
         this.plugin.push(new SyntaxText());
         this.plugin.push(new SyntaxEvent());
         this.plugin.push(new SyntaxEM());
         this.virtualDiff = new VirtualRenderDiff();
+    }
+    bind(sessionId: string, type: TypeVirtualRenderEventType, callback: Function): string {
+        const evtId = "virtualRenderEvent_" + this.guid();
+        if(!this.events[sessionId]) {
+            this.events[sessionId] = {};
+        }
+        if(!this.events[sessionId][type]) {
+            this.events[sessionId][type] = {};
+        }
+        this.events[sessionId][type][evtId] = callback;
+        return evtId;
+    }
+    unBind(sessionId: string, type: TypeVirtualRenderEventType, eventId: string): void {
+        if(this.events[sessionId]) {
+            if(this.events[sessionId][type]) {
+                delete this.events[sessionId][type][eventId];
+                if(Object.keys(this.events[sessionId][type]).length<=0) {
+                    delete this.events[sessionId][type];
+                }
+            }
+            if(Object.keys(this.events[sessionId]).length<=0) {
+                delete this.events[sessionId]
+            }
+        }
+    }
+    setVirtualElement(virtualDom:VirtualNode): void {
+        this.virtualDom = virtualDom;
     }
     /**
      * 渲染虚拟dom，并做diff运算标记dom状态
@@ -44,14 +73,35 @@ export class VirtualRender extends Common {
      * @param oldDomData 旧dom树
      * @param component 渲染component对象
      */
-    render(domData:IVirtualElement, oldDomData:IVirtualElement,component:any): IVirtualElement {
+    render(domData:IVirtualElement, oldDomData:IVirtualElement,component:any, options?: TypeVirtualRenderOptions): IVirtualElement {
         const renderDom:any = JSON.parse(JSON.stringify(domData));
+        const beforeEventName:TypeVirtualRenderEventType = "onBeforeRender";
+        if(options && !this.isEmpty(options.sessionId)) {
+            const eventObjKey = `${options.sessionId}.${beforeEventName}`;
+            const eventObj = this.getValue(this.events, eventObjKey);
+            if(eventObj) {
+                for(const evtId of Object.keys(eventObj)) {
+                    const eventCallback = eventObj[evtId];
+                    if(typeof eventCallback === "function") {
+                        const event = {
+                            cancelBubble: false,
+                            vdom: renderDom
+                        };
+                        eventCallback(event);
+                        if(event.cancelBubble) {
+                            break;
+                        }
+                    }
+                }
+            }
+        }
         this.forEach({
             component,
             doDiff: oldDomData && oldDomData.children.length > 0,
             domData: renderDom,
             oldDomData,
-            optionsData: null
+            optionsData: null,
+            rootPath: options ? (options.rootPath || []) : []
         });
         return renderDom;
     }
@@ -95,9 +145,7 @@ export class VirtualRender extends Common {
                 }
                 hasForEach = true;
             }
-            if(hasForEach) {
-                dom.path = [...event.domData.path, kIndex];
-            }
+            dom.path = [...event.rootPath,...event.domData.path, kIndex]; // 更新path数据
             // 先对属性数据绑定，事件绑定，逻辑判断渲染到虚拟dom树
             if(this.renderAttribute(dom, event.component,{
                 ...optionalData,
@@ -124,7 +172,8 @@ export class VirtualRender extends Common {
                     domData: dom,
                     oldDomData: diffResult.matchDom,
                     optionsData: optionalData,
-                    updateParentPath: hasForEach
+                    updateParentPath: hasForEach,
+                    rootPath: event.rootPath
                 };
                 const myResult = this.forEach(myEvent);
                 if(myResult.hasRenderChange) {
@@ -263,10 +312,10 @@ export class VirtualRender extends Common {
             const dataKey: string = forMatch[2].replace(/^this\./i,"");
             const repeatData:any = this.getValue(optionsData, dataKey) || this.getValue(component, dataKey);
             if(repeatData) {
-                this.virtualDom.init(dom);
+                const sessionId = this.virtualDom.init(dom);
                 // tslint:disable-next-line: forin
                 for(const forKey in repeatData) {
-                    const newDom = this.virtualDom.clone();
+                    const newDom = this.virtualDom.clone(sessionId);
                     const newItemData = JSON.parse(JSON.stringify(repeatData[forKey]));
                     newDom.props = {...dom.props};
                     delete newDom.props["em:for"];
@@ -279,6 +328,7 @@ export class VirtualRender extends Common {
                     newDom.data["index"] = forKey;
                     resultDoms.push(newDom);
                 }
+                this.virtualDom.clear(sessionId);
             }
         }
         return resultDoms;
@@ -315,10 +365,10 @@ export class VirtualRender extends Common {
             if(this.isEmpty(repeateDom.props.key)) {
                 throw new Error("forEach标签下的子标签必须要设置key属性");
             }
-            this.virtualDom.init(repeateDom);
+            const sessionId = this.virtualDom.init(repeateDom);
             // tslint:disable-next-line: forin
             for(const forKey in repeatData) {
-                const newDom = this.virtualDom.clone();
+                const newDom = this.virtualDom.clone(sessionId);
                 const newItemData = JSON.parse(JSON.stringify(repeatData[forKey]));
                 newDom.data = {
                     ...newDom.data,
@@ -330,6 +380,7 @@ export class VirtualRender extends Common {
                 newDom.data[indexKey] = forKey;
                 resultDoms.push(newDom);
             }
+            this.virtualDom.clear(sessionId);
         }
         return resultDoms;
     }
