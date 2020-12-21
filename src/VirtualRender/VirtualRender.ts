@@ -1,5 +1,5 @@
 import { Common } from "elmer-common";
-import { IHtmlNodeEventData, IVirtualElement } from "../IVirtualElement";
+import { IVirtualElement } from "../IVirtualElement";
 import { ASyntax, SyntaxEM, SyntaxEvent, SyntaxText } from "../RenderingSyntax";
 import { TypeRenderEvent } from "../RenderingSyntax/ISyntax";
 import { VirtualNode } from "./VirtualNode";
@@ -95,6 +95,7 @@ export class VirtualRender extends Common {
                 }
             }
         }
+        renderDom.path = options ? (options.rootPath || []) : []; // 设置根节点路径
         this.forEach({
             component,
             doDiff: oldDomData && oldDomData.children.length > 0,
@@ -145,7 +146,7 @@ export class VirtualRender extends Common {
                 }
                 hasForEach = true;
             }
-            dom.path = [...event.rootPath,...event.domData.path, kIndex]; // 更新path数据
+            dom.path = [...event.domData.path, kIndex]; // 更新path数据
             // 先对属性数据绑定，事件绑定，逻辑判断渲染到虚拟dom树
             if(this.renderAttribute(dom, event.component,{
                 ...optionalData,
@@ -266,7 +267,9 @@ export class VirtualRender extends Common {
                         !/^if$/.test(newAttrKey) && attributes.push(`${newAttrKey}=${JSON.stringify(toCodeAttrValue)}`);
                     } else {
                         const eventName = newAttrKey.replace(/^et\:/i, "");
-                        dom.events[eventName] = attrValue;
+                        if(typeof attrValue === "function") {
+                            dom.events[eventName] = attrValue.bind(component);
+                        }
                         delete dom.props[attrKey];
                     }
                 }

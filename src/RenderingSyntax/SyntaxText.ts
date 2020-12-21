@@ -3,13 +3,13 @@ import { TypeRenderEvent, TypeRenderResult } from "./ISyntax";
 
 export class SyntaxText extends ASyntax {
     render(event: TypeRenderEvent):TypeRenderResult {
-        if(!/^et\:/i.test(event.attrKey) && !/em\:/.test(event.attrKey)) {
+        if(!/^et\:/i.test(event.attrKey) && !/em\:/.test(event.attrKey) && this.isString(event.target)) {
             const reg = /\{\{([^\\}]{1,})\}\}/g;
             const callbackReg = /\{\{\s*([a-z0-9_.]{1,})\(([^\\}]{1,})\)\s*\}\}/i;
             const defaultReg = /^\{\{([\s\S]*)\|([\s\S]*)\}\}$/;
             const lambdaReg = /\{\{([\s\S^\{^\}]{1,})\?([\s\S^\{^\}]{1,})\:([\s\S^\{^\}]{1,})\}\}/;
             const logicReg = /\s(eq|neq|seq|sneq|lt|gt|lteq|gteq|&&|\|\||\+|\-|\*|\/|\%)\s/;
-            const cTxt = (event.target || "").replace(/^\s*/,"").replace(/\s$/, "");
+            const cTxt = event.target.replace(/^\s*/,"").replace(/\s$/, "");
             const keyMatch = cTxt.match(reg);
             let codeText = event.target;
             let hasChange = false;
