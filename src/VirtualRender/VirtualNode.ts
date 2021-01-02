@@ -167,9 +167,11 @@ export class VirtualNode extends Common {
         cloneData.props = {};
         const newItem = JSON.parse(JSON.stringify(cloneData));
         newItem.innerHTML = cloneData.innerHTML;
-        newItem.data = JSON.parse(JSON.stringify(cloneData.data));
         newItem.path = JSON.parse(JSON.stringify(cloneData.path));
         newItem.props = cloneProps;
+        newItem.events = cloneData.events;
+        newItem.dom = cloneData.dom;
+        newItem.data = cloneData.data;
         return newItem;
     }
     changeStatus(vdom: IVirtualElement, status: VirtualElementOperateType): void {

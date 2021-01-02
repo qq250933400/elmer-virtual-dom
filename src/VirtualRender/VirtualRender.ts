@@ -14,6 +14,7 @@ type VirtualRenderEvent = {
     hasChange?: boolean;
     updateParentPath?: boolean;
     rootPath: number[];
+    isUserComponent: boolean;
 };
 type VirtualLoopRenderResult = {
     hasRenderChange: boolean;
@@ -22,6 +23,7 @@ type VirtualLoopRenderResult = {
 type TypeVirtualRenderEventType = "onBeforeRender";
 type TypeVirtualRenderOptions = {
     rootPath?: number[],
+    children?: IVirtualElement[];
     sessionId?: string
 };
 /**
@@ -96,15 +98,90 @@ export class VirtualRender extends Common {
             }
         }
         renderDom.path = options ? (options.rootPath || []) : []; // 设置根节点路径
+        options && options.children && this.replaceContent(renderDom, options.children);
         this.forEach({
             component,
             doDiff: oldDomData && oldDomData.children.length > 0,
             domData: renderDom,
             oldDomData,
             optionsData: null,
-            rootPath: options ? (options.rootPath || []) : []
+            rootPath: options ? (options.rootPath || []) : [],
+            isUserComponent: oldDomData ? !this.isEmpty(oldDomData.virtualID) : false
         });
         return renderDom;
+    }
+    /**
+     * 渲染自定义组件在父组件定义的子组件内容
+     * context不能和content[A-Z\-\_][A-Za-z0-9]{1,}共同使用,只能选择其一做配置
+     * @param checkItem 检测组件
+     * @param children 父组件定义的子组件内容
+     */
+    private replaceContent(checkItem:IVirtualElement, children?: IVirtualElement[]): void {
+        // 当前component接收到children的时候才需要执行此方法，为减少循环提升性能
+        if(children && children.length>0) {
+            const contextWrapperReg = /^context([A-Z\-\_][0-9a-zA-Z]{1,})$/;
+            for(let i=0;i<checkItem.children.length;i++) {
+                const uItem = checkItem.children[i];
+                if(uItem.status !== "DELETE") {
+                    // --- 检测Item是否包含Content元素，检测到，替换为children
+                    if(
+                        /\<context\s*>\s*\S*\<\/context\s*\>/i.test(uItem.innerHTML) ||
+                        /\<context\s*\/\>/i.test(uItem.innerHTML) ||
+                        uItem.tagName === "context" ||
+                        /\<content\s*>\s*\S*\<\/content\s*\>/i.test(uItem.innerHTML) ||
+                        /\<content\s*\/\>/i.test(uItem.innerHTML) ||
+                        uItem.tagName === "content" ||
+                        /\<context[A-Z\-\_][0-9a-zA-Z]{1,}\s*\/\>/.test(uItem.innerHTML) ||
+                        /\<context[A-Z\-\_][0-9a-zA-Z]{1,}\s*\>\s*\S*\<\/context[A-Z\-\_][0-9a-zA-Z]{1,}\s*\>/.test(uItem.innerHTML) ||
+                        contextWrapperReg.test(uItem.tagName)) {
+                        // 检测到当前dom是content元素或者包含content元素，
+                        // 其他dom结构不用再做，
+                        if(uItem.tagName.toLowerCase() === "content" || uItem.tagName.toLowerCase() === "context") {
+                            let isContextKey = false;
+                            let renderKeyReg = /([A-Z\-\_][0-9a-zA-Z]{1,})$/;
+                            for(let j=0,mLen = children.length;j<mLen;j++) {
+                                let renderKeyMatch = children[j].tagName.match(renderKeyReg);
+                                if(renderKeyMatch) {
+                                    const contextRegKey = "ChildrenWrapper" + renderKeyMatch[1];
+                                    if(contextRegKey === children[j].tagName) {
+                                        isContextKey = true;
+                                        break;
+                                    }
+                                    renderKeyMatch = null;
+                                }
+                                children[j].isContent = true;
+                            }
+                            renderKeyReg = null;
+                            if(!isContextKey) {
+                                const sessionId = this.virtualDom.init(checkItem);
+                                this.virtualDom.replaceAt(sessionId, children, i);
+                                this.virtualDom.clear(sessionId);
+                                break;
+                            }
+                        } else {
+                            const contextMatch = uItem.tagName.match(contextWrapperReg);
+                            if(contextMatch) {
+                                const contextKey = "ChildrenWrapper" + contextMatch[1];
+                                for(let j=0, mLen = children.length; j< mLen; j++) {
+                                    if(contextKey === children[j].tagName) {
+                                        for(let z=0,zLen = children[j].children.length;z<zLen;z++) {
+                                            children[j].children[z].isContent = true;
+                                        }
+                                        const sessionId = this.virtualDom.init(checkItem);
+                                        this.virtualDom.replaceAt(sessionId, children[j].children, i);
+                                        this.virtualDom.clear(sessionId);
+                                        break;
+                                    }
+                                }
+                            } else {
+                                // 执行下一层搜索
+                                this.replaceContent(checkItem.children[i], children);
+                            }
+                        }
+                    }
+                }
+            }
+        }
     }
     private forEach(event: VirtualRenderEvent): VirtualLoopRenderResult {
         const optionalData:any = {
@@ -112,6 +189,10 @@ export class VirtualRender extends Common {
             ...(event.optionsData || {})
         };
         const deleteElements: IVirtualElement[] = [];
+        // 当前虚拟dom是用户自定义组件时不需要对子元素做diff运算
+        // 有子元素是要传到自定义组件里面的diff运算去做，当前层级组件内不用做diff
+        // virtualID只有在旧dom才会出现，旧dom节点是经过渲染流程以后的数据
+        const isUserComponent = !event.isUserComponent ? (event.oldDomData ? !this.isEmpty(event.oldDomData.virtualID) : false) : true;
         let hasForEach = false;
         let hasRenderChange = false;
         let hasRenderInnerHTML = "";
@@ -156,14 +237,17 @@ export class VirtualRender extends Common {
                 hasRenderChange = true;
             }
             // console.log(dom.tagName, dom.innerHTML);
-            const diffResult = this.virtualDiff.diff({
+            const diffResult = !isUserComponent ? this.virtualDiff.diff({
                 dom,
                 domIndex: kIndex,
                 help: event.component.help,
                 lastMatchIndex,
                 oldParentDom: event.oldDomData,
                 isLastNode: kIndex === forLen - 1
-            });
+            }) : {
+                matchIndex: 0,
+                matchDom: null
+            };
             lastMatchIndex = diffResult.matchIndex;
             // --------进行下一层级的渲染和diff运算
             if(dom.children.length > 0) {
@@ -174,7 +258,8 @@ export class VirtualRender extends Common {
                     oldDomData: diffResult.matchDom,
                     optionsData: optionalData,
                     updateParentPath: hasForEach,
-                    rootPath: event.rootPath
+                    rootPath: event.rootPath,
+                    isUserComponent
                 };
                 const myResult = this.forEach(myEvent);
                 if(myResult.hasRenderChange) {
@@ -188,7 +273,8 @@ export class VirtualRender extends Common {
             hasRenderInnerHTML += /^text$/i.test(dom.tagName) ? dom.innerHTML : `<${dom.tagName} ${curAttrHtmlCode}>${dom.innerHTML}</${dom.tagName}>`;
         }
         // 将没有做过对比的旧节点找出来并标记为删除状态
-        if(event.oldDomData && event.oldDomData.children.length > 0) {
+        // 如果节点属于自定义组件子节点不标记删除状态，由于子节点没有做diff运算，所有子节点都没有标记为diff状态
+        if(!isUserComponent && event.oldDomData && event.oldDomData.children.length > 0) {
             event.oldDomData.children.map((tmpDom: IVirtualElement) => {
                 // tmpDom.tagAttrs && console.log(tmpDom.tagName, tmpDom.tagAttrs.checked);
                 if(!tmpDom.isDiff) {
