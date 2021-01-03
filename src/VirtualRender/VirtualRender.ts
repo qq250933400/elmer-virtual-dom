@@ -201,76 +201,84 @@ export class VirtualRender extends Common {
         // tslint:disable-next-line: forin
         for(let kIndex =0; kIndex < forLen; kIndex++) {
             let dom = event.domData.children[kIndex];
-            if(!this.isEmpty(dom.props["em:for"]) && dom.tagName !== "forEach") {
-                // 进入for循环
-                const forDoms = this.repeatRender(dom, event.component, optionalData);
-                if(forDoms.length > 0) {
-                    event.domData.children.splice(kIndex, 1, ...forDoms);
-                    dom = event.domData.children[kIndex];
-                    forLen += forDoms.length - 1;
-                    hasForEach = true;
-                } else {
-                    delete event.domData.children[kIndex].props["em:for"];
-                    event.domData.children[kIndex].status = "DELETE";
+            if(!/^\s*script\s*$/i.test(dom.tagName)) {
+                if(!this.isEmpty(dom.props["em:for"]) && dom.tagName !== "forEach") {
+                    // 进入for循环
+                    const forDoms = this.repeatRender(dom, event.component, optionalData);
+                    if(forDoms.length > 0) {
+                        event.domData.children.splice(kIndex, 1, ...forDoms);
+                        dom = event.domData.children[kIndex];
+                        forLen += forDoms.length - 1;
+                        hasForEach = true;
+                    } else {
+                        delete event.domData.children[kIndex].props["em:for"];
+                        event.domData.children[kIndex].status = "DELETE";
+                    }
                 }
-            }
-            if(dom.tagName === "forEach") {
-                // 进入forEach循环
-                const forEachDoms = this.forEachRender(dom, event.component, optionalData);
-                if(forEachDoms.length > 0) {
-                    event.domData.children.splice(kIndex, 1, ...forEachDoms);
-                    dom = event.domData.children[kIndex];
-                    forLen += forEachDoms.length - 1;
+                if(dom.tagName === "forEach") {
+                    // 进入forEach循环
+                    const forEachDoms = this.forEachRender(dom, event.component, optionalData);
+                    if(forEachDoms.length > 0) {
+                        event.domData.children.splice(kIndex, 1, ...forEachDoms);
+                        dom = event.domData.children[kIndex];
+                        forLen += forEachDoms.length - 1;
+                        hasForEach = true;
+                    } else {
+                        event.domData.children[kIndex].status = "DELETE";
+                    }
                     hasForEach = true;
-                } else {
-                    event.domData.children[kIndex].status = "DELETE";
                 }
-                hasForEach = true;
-            }
-            dom.path = [...event.domData.path, kIndex]; // 更新path数据
-            // 先对属性数据绑定，事件绑定，逻辑判断渲染到虚拟dom树
-            if(this.renderAttribute(dom, event.component,{
-                ...optionalData,
-                ...(dom.data || {})
-            })) {
-                // 有绑定内容渲染，更新innerHTML
-                hasRenderChange = true;
-            }
-            // console.log(dom.tagName, dom.innerHTML);
-            const diffResult = !isUserComponent ? this.virtualDiff.diff({
-                dom,
-                domIndex: kIndex,
-                help: event.component.help,
-                lastMatchIndex,
-                oldParentDom: event.oldDomData,
-                isLastNode: kIndex === forLen - 1
-            }) : {
-                matchIndex: 0,
-                matchDom: null
-            };
-            lastMatchIndex = diffResult.matchIndex;
-            // --------进行下一层级的渲染和diff运算
-            if(dom.children.length > 0) {
-                const myEvent:VirtualRenderEvent = {
-                    component: event.component,
-                    doDiff: event.doDiff,
-                    domData: dom,
-                    oldDomData: diffResult.matchDom,
-                    optionsData: optionalData,
-                    updateParentPath: hasForEach,
-                    rootPath: event.rootPath,
-                    isUserComponent
-                };
-                const myResult = this.forEach(myEvent);
-                if(myResult.hasRenderChange) {
-                    // 数据有变化更新innerHTML
-                    dom.innerHTML = myResult.innerHTML;
+                dom.path = [...event.domData.path, kIndex]; // 更新path数据
+                // 先对属性数据绑定，事件绑定，逻辑判断渲染到虚拟dom树
+                if(this.renderAttribute(dom, event.component,{
+                    ...optionalData,
+                    ...(dom.data || {})
+                })) {
+                    // 有绑定内容渲染，更新innerHTML
                     hasRenderChange = true;
                 }
+                // console.log(dom.tagName, dom.innerHTML);
+                const diffResult = !isUserComponent ? this.virtualDiff.diff({
+                    dom,
+                    domIndex: kIndex,
+                    help: event.component.help,
+                    lastMatchIndex,
+                    oldParentDom: event.oldDomData,
+                    isLastNode: kIndex === forLen - 1
+                }) : {
+                    matchIndex: 0,
+                    matchDom: null
+                };
+                lastMatchIndex = diffResult.matchIndex;
+                // --------进行下一层级的渲染和diff运算
+                if(dom.children.length > 0) {
+                    const myEvent:VirtualRenderEvent = {
+                        component: event.component,
+                        doDiff: event.doDiff,
+                        domData: dom,
+                        oldDomData: diffResult.matchDom,
+                        optionsData: optionalData,
+                        updateParentPath: hasForEach,
+                        rootPath: event.rootPath,
+                        isUserComponent
+                    };
+                    const myResult = this.forEach(myEvent);
+                    if(myResult.hasRenderChange) {
+                        // 数据有变化更新innerHTML
+                        dom.innerHTML = myResult.innerHTML;
+                        hasRenderChange = true;
+                    }
+                }
+                const curAttrHtmlCode = dom.attrCode || "";
+                hasRenderInnerHTML += !this.isEmpty(hasRenderInnerHTML) ? "\r\n" : "";
+                hasRenderInnerHTML += /^text$/i.test(dom.tagName) ? dom.innerHTML : `<${dom.tagName} ${curAttrHtmlCode}>${dom.innerHTML}</${dom.tagName}>`;
+            } else {
+                dom.status = "DELETE";
+                dom.children = [];
+                dom.innerHTML = "Script tags are not allowed in HTML code";
+                dom.tagName = "text";
+                throw new Error(`Script tags are not allowed in HTML code.[${event.component.selector}]`);
             }
-            const curAttrHtmlCode = dom.attrCode || "";
-            hasRenderInnerHTML += !this.isEmpty(hasRenderInnerHTML) ? "\r\n" : "";
-            hasRenderInnerHTML += /^text$/i.test(dom.tagName) ? dom.innerHTML : `<${dom.tagName} ${curAttrHtmlCode}>${dom.innerHTML}</${dom.tagName}>`;
         }
         // 将没有做过对比的旧节点找出来并标记为删除状态
         // 如果节点属于自定义组件子节点不标记删除状态，由于子节点没有做diff运算，所有子节点都没有标记为diff状态

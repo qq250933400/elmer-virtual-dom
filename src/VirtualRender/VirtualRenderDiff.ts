@@ -223,6 +223,9 @@ export class VirtualRenderDiff extends Common {
                     }
                 }
                 return 1;
+            } else {
+                // 当两个节点的子节点都是空的时候可以认为是相同结构
+                return 1;
             }
         } else {
             return 0;
