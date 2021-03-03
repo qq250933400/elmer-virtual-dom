@@ -1,3 +1,5 @@
+import { IVirtualElement } from "../IVirtualElement";
+
 export type TypeRenderActions = "BindText" | "BindAction" | "BindEvent";
 
 export type TypeRenderEvent = {
@@ -6,6 +8,7 @@ export type TypeRenderEvent = {
     data: any;
     target: string;
     break?: boolean;
+    vdom: IVirtualElement
 };
 
 export type TypeRenderResult = {

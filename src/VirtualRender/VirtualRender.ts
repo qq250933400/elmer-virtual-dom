@@ -1,6 +1,6 @@
 import { Common } from "elmer-common";
 import { IVirtualElement } from "../IVirtualElement";
-import { ASyntax, SyntaxEM, SyntaxEvent, SyntaxText } from "../RenderingSyntax";
+import { ASyntax, SyntaxEM, SyntaxEvent, SyntaxText, SysntaxAttrs } from "../RenderingSyntax";
 import { TypeRenderEvent } from "../RenderingSyntax/ISyntax";
 import { VirtualNode } from "./VirtualNode";
 import { VirtualRenderDiff } from "./VirtualRenderDiff";
@@ -40,6 +40,7 @@ export class VirtualRender extends Common {
         this.plugin.push(new SyntaxText());
         this.plugin.push(new SyntaxEvent());
         this.plugin.push(new SyntaxEM());
+        this.plugin.push(new SysntaxAttrs());
         this.virtualDiff = new VirtualRenderDiff();
     }
     bind(sessionId: string, type: TypeVirtualRenderEventType, callback: Function): string {
@@ -320,7 +321,8 @@ export class VirtualRender extends Common {
                             break: false,
                             component,
                             data: optionalData,
-                            target: dom.props[attrKey]
+                            target: dom.props[attrKey],
+                            vdom: dom
                         };
                         const renderResult = plugin.render(renderEvent);
                         if(renderResult.hasChange) {
@@ -379,7 +381,8 @@ export class VirtualRender extends Common {
                     break: false,
                     component,
                     data: optionalData,
-                    target: result
+                    target: result,
+                    vdom: dom
                 };
                 const renderResult = plugin.render(renderEvent);
                 if(renderResult.hasChange) {
