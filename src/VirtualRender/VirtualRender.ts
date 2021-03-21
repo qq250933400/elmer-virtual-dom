@@ -202,6 +202,7 @@ export class VirtualRender extends Common {
         // tslint:disable-next-line: forin
         for(let kIndex =0; kIndex < forLen; kIndex++) {
             let dom = event.domData.children[kIndex];
+            let diffResult = null;
             if(!/^\s*script\s*$/i.test(dom.tagName)) {
                 if(!this.isEmpty(dom.props["em:for"]) && dom.tagName !== "forEach") {
                     // 进入for循环
@@ -230,6 +231,11 @@ export class VirtualRender extends Common {
                     hasForEach = true;
                 }
                 dom.path = [...event.domData.path, kIndex]; // 更新path数据
+                if(event.domData.status === "DELETE") {
+                    // 当前父组件由于新数据渲染过后需要删除，则子节点也需要删除
+                    // 当做diff运算时需要交换virtualId一遍后面处理删除事件
+                    dom.status = "DELETE";
+                }
                 // 先对属性数据绑定，事件绑定，逻辑判断渲染到虚拟dom树
                 if(this.renderAttribute(dom, event.component,{
                     ...optionalData,
@@ -239,16 +245,16 @@ export class VirtualRender extends Common {
                     hasRenderChange = true;
                 }
                 // console.log(dom.tagName, dom.innerHTML);
-                const diffResult = !isUserComponent ? this.virtualDiff.diff({
+                diffResult = !isUserComponent ? this.virtualDiff.diff({
                     dom,
                     domIndex: kIndex,
                     help: event.component.help,
+                    isLastNode: kIndex === forLen - 1,
                     lastMatchIndex,
                     oldParentDom: event.oldDomData,
-                    isLastNode: kIndex === forLen - 1
                 }) : {
-                    matchIndex: 0,
-                    matchDom: null
+                    matchDom: null,
+                    matchIndex: 0
                 };
                 lastMatchIndex = diffResult.matchIndex;
                 // --------进行下一层级的渲染和diff运算
@@ -257,11 +263,11 @@ export class VirtualRender extends Common {
                         component: event.component,
                         doDiff: event.doDiff,
                         domData: dom,
-                        oldDomData: diffResult.matchDom,
+                        isUserComponent,
+                        oldDomData: diffResult?.matchDom,
                         optionsData: optionalData,
-                        updateParentPath: hasForEach,
                         rootPath: event.rootPath,
-                        isUserComponent
+                        updateParentPath: hasForEach,
                     };
                     const myResult = this.forEach(myEvent);
                     if(myResult.hasRenderChange) {
@@ -307,6 +313,7 @@ export class VirtualRender extends Common {
     private renderAttribute(dom:IVirtualElement, component:any,optionalData: any): boolean {
         let hasChange = false;
         if(dom.tagName !== "text") {
+            let hasIf = false;
             if(dom.props) {
                 const attributes = [];
                 const dataSet = {};
@@ -339,10 +346,15 @@ export class VirtualRender extends Common {
                             break;
                         }
                     }
+                    if(/\:if$/.test(newAttrKey) || /^if$/.test(newAttrKey)) {
+                        // console.log(newAttrKey, attrValue, dom.tagName);
+                        hasIf = true;
+                    }
                     if(!isEvent) {
                         if(hasChange) {
                             // 检测到有数据绑定才需要更新属性值
-                            if(newAttrKey === "if") {
+                            // 自由节点不是删除状态时才需要做此判断，被父组件删除状态影响时状态则不需更新状态
+                            if(dom.status !== "DELETE" && (newAttrKey === "if" || "em:if" === newAttrKey)) {
                                 // if属性已经被作为是否渲染的标识，不在往外抛出属性
                                 if(attrValue) {
                                     dom.status = "APPEND";
@@ -352,7 +364,7 @@ export class VirtualRender extends Common {
                             } else {
                                 dom.props[newAttrKey] = attrValue;
                             }
-                            if(newAttrKey !== attrKey || newAttrKey === "if") {
+                            if(newAttrKey !== attrKey) {
                                 delete dom.props[attrKey];
                             }
                         }
@@ -372,6 +384,7 @@ export class VirtualRender extends Common {
                 dom.dataSet = dataSet;
                 // tslint:disable-next-line: curly
                 dom.attrCode = attributes.join(" "); // 临时存储innerHTML，读取值以后即可删除
+                delete dom.props["..."];
             }
         } else {
             let result = dom.innerHTML;
@@ -417,7 +430,7 @@ export class VirtualRender extends Common {
                 for(const forKey in repeatData) {
                     const newDom = this.virtualDom.clone(sessionId);
                     const newItemData = JSON.parse(JSON.stringify(repeatData[forKey]));
-                    newDom.props = {...dom.props};
+                    // newDom.props = {...dom.props};
                     delete newDom.props["em:for"];
                     newItemData.key = forKey;
                     newDom.data = {
@@ -474,7 +487,6 @@ export class VirtualRender extends Common {
                     ...newDom.data,
                     ...optionsData
                 };
-                newDom.props = {...repeateDom.props};
                 newDom.props.key = newDom.props.key + forKey;
                 newDom.data[itemKey] = newItemData;
                 newDom.data[indexKey] = forKey;

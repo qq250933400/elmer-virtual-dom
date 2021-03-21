@@ -164,11 +164,12 @@ export class VirtualNode extends Common {
     clone(sessionId: string): IVirtualElement {
         const cloneData:IVirtualElement = this.getNode(sessionId);
         const cloneProps = cloneData.props;
-        cloneData.props = {};
         const newItem = JSON.parse(JSON.stringify(cloneData));
         newItem.innerHTML = cloneData.innerHTML;
         newItem.path = JSON.parse(JSON.stringify(cloneData.path));
-        newItem.props = cloneProps;
+        newItem.props = { // copy data not use the same object
+            ...(cloneProps || {})
+        };
         newItem.events = cloneData.events;
         newItem.dom = cloneData.dom;
         newItem.data = cloneData.data;

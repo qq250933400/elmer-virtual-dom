@@ -1,6 +1,6 @@
 {
     "name": "elmer-virtual-dom",
-    "version": "2.0.4",
+    "version": "2.0.5",
     "description": "htmlParse and virtualDom diff",
     "typings": "types/index.d.ts",
     "main": "lib/index.js",

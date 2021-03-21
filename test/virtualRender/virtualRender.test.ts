@@ -170,5 +170,18 @@ describe("虚拟dom渲染测试", () => {
             });
             virtualRender.unBind(ssid, "onBeforeRender", evtId);
         });
+        it("If属性渲染", () => {
+            const testCode = "<label if='{{visible}}'>测试{{item.title}}</label>";
+            const vdom = htmlParse.parse(testCode);
+            const ssid = virtualRender.guid();
+            const newDom = virtualRender.render(vdom, null, {
+                visible: false
+            });
+            const newDom2 = virtualRender.render(vdom, null, {
+                visible: true
+            });
+            chai.assert.deepEqual(newDom.children[0].status, "DELETE");
+            chai.assert.deepEqual(newDom2.children[0].status, "APPEND");
+        });
     });
 });

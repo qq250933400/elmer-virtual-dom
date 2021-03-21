@@ -9,6 +9,7 @@ export class SyntaxText extends ASyntax {
             const defaultReg = /^\{\{([\s\S]*)\|([\s\S]*)\}\}$/;
             const lambdaReg = /\{\{([\s\S^\{^\}]{1,})\?([\s\S^\{^\}]{1,})\:([\s\S^\{^\}]{1,})\}\}/;
             const logicReg = /\s(eq|neq|seq|sneq|lt|gt|lteq|gteq|&&|\|\||\+|\-|\*|\/|\%)\s/;
+            const injectScriptReg = /\s*script\:/i;
             const cTxt = event.target.replace(/^\s*/,"").replace(/\s$/, "");
             const keyMatch = cTxt.match(reg);
             let codeText = event.target;
@@ -19,9 +20,9 @@ export class SyntaxText extends ASyntax {
                     // 普通数据绑定
                     if(/^\{\{\s*[a-z0-9\.\_]{1,}\s*\}\}$/i.test(tmpValue) && !isLogicChecking) {
                         // 普通数据绑定
-                        const bindKey = tmpValue.replace(/^\{\{/, "").replace(/\}\}$/, "");
+                        const bindKey = tmpValue.replace(/^\{\{\s*/, "").replace(/\s*\}\}$/, "");
                         const optionValue = this.getValue(event.data, bindKey);
-                        const bindValue:any = undefined === optionValue || null === optionValue ? this.getValue(event.component, bindKey) : optionValue;
+                        const bindValue:any = /^(true|false)$/i.test(bindKey) ? /^true$/i.test(bindKey) : (undefined === optionValue || null === optionValue ? this.getValue(event.component, bindKey) : optionValue);
                         if(!this.isFunction(bindValue)) {
                             codeText = cTxt !== tmpValue ? codeText.replace(tmpValue, bindValue) : bindValue;
                         } else {
@@ -46,7 +47,7 @@ export class SyntaxText extends ASyntax {
                                             callbackParams.push(varKey);
                                         } else {
                                             // 当前参数是变量从component读取数据
-                                            const pV = this.getValue(event.component, varKey);
+                                            const pV = this.getValue(event.data, varKey) || this.getValue(event.component, varKey);
                                             callbackParams.push(pV);
                                         }
                                     });
@@ -83,10 +84,16 @@ export class SyntaxText extends ASyntax {
                         const logicV = this.runLimitScript(runScript, event.component, event.data);
                         codeText = cTxt !== tmpValue ? codeText.replace(tmpValue, logicV) : logicV;
                         hasChange = true;
+                    } else if(injectScriptReg.test(tmpValue)) {
+                        if(/^href$/.test(event.attrKey)) {
+                            hasChange = true;
+                            codeText = "Not allow script";
+                            console.error("Not all script: " + tmpValue);
+                        }
                     }
                 });
             }
-            event.break = hasChange;
+            event.break = hasChange && event.attrKey !== "...";
             return {
                 attrKey: event.attrKey,
                 hasChange,

@@ -72,8 +72,8 @@ export abstract class ASyntax extends Common {
         let index = 0;
         let mIndex = 0;
         const varBindFunc = (xcode: string): void => {
-            const varKey = missionId + "_" + index;
             const tmpCode = xcode.split(orChar).join("||").split(andChar).join("&&").split(xOrChar).join("|").split(xAndChar).join("&");
+            const varKey = missionId + "_" + index;
             if(tmpCode === "||" || tmpCode === "&&" || tmpCode === "|" || tmpCode === "&") {
                 logicCodeArr.push(tmpCode);
             } else {

@@ -4,7 +4,9 @@ import { TypeRenderEvent, TypeRenderResult } from "./ISyntax";
 export class SysntaxAttrs extends ASyntax {
     render(event: TypeRenderEvent):TypeRenderResult {
         if(event.attrKey === "...") {
-            const exdata = this.getValue(event.data, event.target) || this.getValue(event.component, event.target);
+            const targetKeys = this.isString(event.target) ? event.target.replace(/\s*\{\{\s*/,"").replace(/\s*\}\}\s*/, "") : "";
+            // if event.target equal object then that value was transform from SyntaxText
+            const exdata = this.isString(event.target) ? (this.getValue(event.data, targetKeys) || this.getValue(event.component, targetKeys)) : event.target;
             if(exdata && this.isObject(exdata)) {
                 this.extend(event.vdom.props, exdata, true, ["id","children"]);
                 event.break = true;
@@ -20,7 +22,7 @@ export class SysntaxAttrs extends ASyntax {
                 attrKey: event.attrKey,
                 hasChange: false,
                 result: null
-            }
+            };
         }
     }
 }

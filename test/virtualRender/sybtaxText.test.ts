@@ -1,13 +1,16 @@
 import * as chai from "chai";
 import "mocha";
 import { SyntaxText } from "../../src/RenderingSyntax";
+import { HtmlParse } from "../../src/HtmlParse";
 
+const htmlParse = new HtmlParse();
 const st = new SyntaxText();
 const demoData = {
     title: "example",
     lm: 4,
     color: "red",
-    text: "Empty"
+    text: "Empty",
+    visible: true
 };
 
 describe("数据绑定渲染", () => {
@@ -23,7 +26,15 @@ describe("数据绑定渲染", () => {
         const mResult = st.render({
             component: demoData,
             data: null,
-            target: "{{title}}"
+            target: "{{title}}",
+            vdom: {
+                tagName: "Test",
+                "children": [],
+                "props": {},
+                "events": {},
+                path: [0],
+                "status": "NORMAL"
+            }
         });
         chai.assert.strictEqual(mResult.result, "example");
     });
@@ -34,5 +45,16 @@ describe("数据绑定渲染", () => {
     it("数学运算", () => {
         const rResult = st.runLimitScript("lm % 6 + 100 ", demoData, {});
         chai.assert.equal(rResult, 104);
+    });
+    it("If属性绑定测试", () => {
+        const vdom = htmlParse.parse("<About if='{{visible}}'/>");
+        const vResult = st.render({
+            component: demoData,
+            vdom,
+            target: "{{visible}}",
+            data: null
+        });
+        console.log(vResult.result);
+        chai.assert.deepEqual<boolean>(vResult.result as any, true);
     });
 });
