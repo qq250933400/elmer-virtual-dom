@@ -54,7 +54,6 @@ describe("数据绑定渲染", () => {
             target: "{{visible}}",
             data: null
         });
-        console.log(vResult.result);
         chai.assert.deepEqual<boolean>(vResult.result as any, true);
     });
 });

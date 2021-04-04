@@ -110,14 +110,14 @@ describe("2.0版本diff算法测试", () => {
             const testCode2 = `<div><context /></div>`;
             const vdom1 = htmlParse.parse(testCode1);
             const vdom2 = htmlParse.parse(testCode2);
-            const vdomDiff1 = virtualRender.render(vdom1, null, {
+            const vdomDiff1 = virtualRender.render(vdom2, null, {
                 title: "test1",
                 onClick: () => 12
+            }, {
+                children: vdom1.children
             });
-            const sessionId = virtualElement.init(vdom2.children[0]);
-            virtualElement.replaceAt(sessionId, vdomDiff1.children[0], 0);
-            chai.assert.strictEqual(typeof vdom2.children[0].children[0].events.click, "function");
-            chai.assert.strictEqual(vdom2.children[0].innerHTML, `<button >Hello world test1</button>\r\n`);
+            chai.assert.strictEqual(typeof vdomDiff1.children[0].children[0].events.click, "function");
+            chai.assert.strictEqual(vdomDiff1.children[0].children[0].innerHTML, `Hello world test1`);
         });
     });
 });

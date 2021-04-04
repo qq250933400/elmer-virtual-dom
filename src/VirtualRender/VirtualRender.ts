@@ -15,12 +15,14 @@ type VirtualRenderEvent = {
     updateParentPath?: boolean;
     rootPath: number[];
     isUserComponent: boolean;
+    isComponentChild: boolean;
+    sessionId?: string;
 };
 type VirtualLoopRenderResult = {
     hasRenderChange: boolean;
     innerHTML: string;
 };
-type TypeVirtualRenderEventType = "onBeforeRender";
+type TypeVirtualRenderEventType = "onBeforeRender" | "onBeforeReplaceContext" | "onRender";
 type TypeVirtualRenderOptions = {
     rootPath?: number[],
     children?: IVirtualElement[];
@@ -43,7 +45,7 @@ export class VirtualRender extends Common {
         this.plugin.push(new SysntaxAttrs());
         this.virtualDiff = new VirtualRenderDiff();
     }
-    bind(sessionId: string, type: TypeVirtualRenderEventType, callback: Function): string {
+    bind(sessionId: string, type: TypeVirtualRenderEventType, callback: Function): Function {
         const evtId = "virtualRenderEvent_" + this.guid();
         if(!this.events[sessionId]) {
             this.events[sessionId] = {};
@@ -52,20 +54,15 @@ export class VirtualRender extends Common {
             this.events[sessionId][type] = {};
         }
         this.events[sessionId][type][evtId] = callback;
-        return evtId;
-    }
-    unBind(sessionId: string, type: TypeVirtualRenderEventType, eventId: string): void {
-        if(this.events[sessionId]) {
-            if(this.events[sessionId][type]) {
-                delete this.events[sessionId][type][eventId];
-                if(Object.keys(this.events[sessionId][type]).length<=0) {
-                    delete this.events[sessionId][type];
-                }
+        return () => {
+            delete this.events[sessionId][type][evtId];
+            if(Object.keys(this.events[sessionId][type]).length <= 0) {
+                delete this.events[sessionId][type];
             }
-            if(Object.keys(this.events[sessionId]).length<=0) {
-                delete this.events[sessionId]
+            if(Object.keys(this.events[sessionId]).length <= 0) {
+                delete this.events[sessionId];
             }
-        }
+        };
     }
     setVirtualElement(virtualDom:VirtualNode): void {
         this.virtualDom = virtualDom;
@@ -78,38 +75,47 @@ export class VirtualRender extends Common {
      */
     render(domData:IVirtualElement, oldDomData:IVirtualElement,component:any, options?: TypeVirtualRenderOptions): IVirtualElement {
         const renderDom:any = JSON.parse(JSON.stringify(domData));
-        const beforeEventName:TypeVirtualRenderEventType = "onBeforeRender";
-        if(options && !this.isEmpty(options.sessionId)) {
-            const eventObjKey = `${options.sessionId}.${beforeEventName}`;
-            const eventObj = this.getValue(this.events, eventObjKey);
+        renderDom.path = options ? (options.rootPath || []) : []; // 设置根节点路径
+        // 在替换子节点容器前执行
+        this.raiseEvent(options?.sessionId, "onBeforeReplaceContext", {vdom: renderDom});
+        options && options.children && this.replaceContent(renderDom, options.children);
+        // 替换子节点容器后，渲染数据前执行
+        this.raiseEvent(options?.sessionId, "onBeforeRender", {vdom: renderDom});
+        this.forEach({
+            component,
+            doDiff: oldDomData && oldDomData.children.length > 0,
+            domData: renderDom,
+            isComponentChild: false,
+            isUserComponent: oldDomData ? !this.isEmpty(oldDomData.virtualID) : false,
+            oldDomData,
+            optionsData: null,
+            rootPath: options ? (options.rootPath || []) : [],
+            sessionId: options?.sessionId
+        });
+        return renderDom;
+    }
+    private raiseEvent(sessionId: string, eventName: TypeVirtualRenderEventType, args?: any): any {
+        if(!this.isEmpty(sessionId) && !this.isEmpty(eventName)) {
+            const eventKey = `${sessionId}.${eventName}`;
+            const eventObj = this.getValue(this.events, eventKey);
             if(eventObj) {
-                for(const evtId of Object.keys(eventObj)) {
-                    const eventCallback = eventObj[evtId];
+                let eventResult = null;
+                for(const eventId of Object.keys(eventObj)) {
+                    const eventCallback = eventObj[eventId];
                     if(typeof eventCallback === "function") {
                         const event = {
                             cancelBubble: false,
-                            vdom: renderDom
+                            data: args
                         };
-                        eventCallback(event);
+                        eventResult = eventCallback(event);
                         if(event.cancelBubble) {
                             break;
                         }
                     }
                 }
+                return eventResult;
             }
         }
-        renderDom.path = options ? (options.rootPath || []) : []; // 设置根节点路径
-        options && options.children && this.replaceContent(renderDom, options.children);
-        this.forEach({
-            component,
-            doDiff: oldDomData && oldDomData.children.length > 0,
-            domData: renderDom,
-            oldDomData,
-            optionsData: null,
-            rootPath: options ? (options.rootPath || []) : [],
-            isUserComponent: oldDomData ? !this.isEmpty(oldDomData.virtualID) : false
-        });
-        return renderDom;
     }
     /**
      * 渲染自定义组件在父组件定义的子组件内容
@@ -121,6 +127,7 @@ export class VirtualRender extends Common {
         // 当前component接收到children的时候才需要执行此方法，为减少循环提升性能
         if(children && children.length>0) {
             const contextWrapperReg = /^context([A-Z\-\_][0-9a-zA-Z]{1,})$/;
+            // ContextLeft  -> ChildrenWrapperLeft
             for(let i=0;i<checkItem.children.length;i++) {
                 const uItem = checkItem.children[i];
                 if(uItem.status !== "DELETE") {
@@ -236,6 +243,12 @@ export class VirtualRender extends Common {
                     // 当做diff运算时需要交换virtualId一遍后面处理删除事件
                     dom.status = "DELETE";
                 }
+                // 在此执行emit事件，在renderAttribure前做一些改动
+                const eventResult:any = this.raiseEvent(event.sessionId, "onRender", {
+                    dom,
+                    isComponentChild: event.isComponentChild
+                });
+
                 // 先对属性数据绑定，事件绑定，逻辑判断渲染到虚拟dom树
                 if(this.renderAttribute(dom, event.component,{
                     ...optionalData,
@@ -244,8 +257,9 @@ export class VirtualRender extends Common {
                     // 有绑定内容渲染，更新innerHTML
                     hasRenderChange = true;
                 }
-                // console.log(dom.tagName, dom.innerHTML);
-                diffResult = !isUserComponent ? this.virtualDiff.diff({
+                // 如果当前元素是自定义组件的子元素时不做diff运算，保留给自定义组件渲染时做diff算法
+                // 当前元素是自定义组件，但并不是其他自定义组件的子元素需要做diff
+                diffResult = !eventResult?.isComponentChild ? this.virtualDiff.diff({
                     dom,
                     domIndex: kIndex,
                     help: event.component.help,
@@ -263,11 +277,15 @@ export class VirtualRender extends Common {
                         component: event.component,
                         doDiff: event.doDiff,
                         domData: dom,
-                        isUserComponent,
+                        // 当前组件是自定义组件并且不是自定义组件元素时，下一个层元素则被定义为自定义组件元素 isComponentChild === true
+                        // 当前组件为自定义组件子元素 isComponentChild === true
+                        isComponentChild: eventResult?.isComponentChild || (eventResult?.isComponent && !eventResult?.isComponentChild), // 用于标记是不是组定义组件下的元素
+                        isUserComponent: eventResult?.isComponent, // 用于标记是不是自定义组件
                         oldDomData: diffResult?.matchDom,
                         optionsData: optionalData,
                         rootPath: event.rootPath,
-                        updateParentPath: hasForEach,
+                        sessionId: event.sessionId,
+                        updateParentPath: hasForEach
                     };
                     const myResult = this.forEach(myEvent);
                     if(myResult.hasRenderChange) {
@@ -317,6 +335,8 @@ export class VirtualRender extends Common {
             if(dom.props) {
                 const attributes = [];
                 const dataSet = {};
+                const renderComponent = (dom as any).component || component;
+                // 当组件是上一层组件定义的子元素时，调用的数据应该从上一次元素获取数据
                 // tslint:disable-next-line: forin
                 for(const attrKey in dom.props) {
                     let attrValue = dom.props[attrKey];
@@ -326,7 +346,7 @@ export class VirtualRender extends Common {
                         const renderEvent: TypeRenderEvent = {
                             attrKey,
                             break: false,
-                            component,
+                            component: renderComponent,
                             data: optionalData,
                             target: dom.props[attrKey],
                             vdom: dom
@@ -337,6 +357,13 @@ export class VirtualRender extends Common {
                             hasChange = true;
                             if(!this.isEmpty(renderResult.attrKey)) {
                                 newAttrKey = renderResult.attrKey;
+                            }
+                        }
+                        if(/^on/.test(attrKey)) {
+                            // 浏览器默认事件处理，过滤此操作，使用框架自定义
+                            // 并且属性值为javascript: void();模式，或则执行方法aa()
+                            if(typeof renderResult.result === "function" || /^\s*javascript\s\:/.test(attrValue) || /[a-z][a-z0-9\.\_]*\s*\(/i.test(attrValue)) {
+                                attrValue = "Not Allow Event";
                             }
                         }
                         if(renderResult.isEvent) {
@@ -362,6 +389,9 @@ export class VirtualRender extends Common {
                                     dom.status = "DELETE";
                                 }
                             } else {
+                                if((dom as any).component) {
+                                   // delete dom.props[newAttrKey];
+                                }
                                 dom.props[newAttrKey] = attrValue;
                             }
                             if(newAttrKey !== attrKey) {
