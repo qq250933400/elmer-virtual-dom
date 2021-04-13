@@ -411,6 +411,13 @@ export class VirtualRender extends Common {
                         delete dom.props[attrKey];
                     }
                 }
+                if(dom.props["..."]) {
+                    if(this.isObject(dom.props["..."])) {
+                        const newProps = dom.props["..."];
+                        this.extend(dom.props, newProps);
+                        delete dom.props["..."];
+                    }
+                }
                 dom.dataSet = dataSet;
                 // tslint:disable-next-line: curly
                 dom.attrCode = attributes.join(" "); // 临时存储innerHTML，读取值以后即可删除

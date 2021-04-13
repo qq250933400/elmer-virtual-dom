@@ -7,15 +7,15 @@ export class SysntaxAttrs extends ASyntax {
             const targetKeys = this.isString(event.target) ? event.target.replace(/\s*\{\{\s*/,"").replace(/\s*\}\}\s*/, "") : "";
             // if event.target equal object then that value was transform from SyntaxText
             const exdata = this.isString(event.target) ? (this.getValue(event.data, targetKeys) || this.getValue(event.component, targetKeys)) : event.target;
+            let hasChange = false;
             if(exdata && this.isObject(exdata)) {
-                this.extend(event.vdom.props, exdata, true, ["id","children"]);
                 event.break = true;
+                hasChange = true;
             }
-            delete event.vdom.props[event.attrKey];
             return {
                 attrKey: event.attrKey,
-                hasChange: false,
-                result: null
+                hasChange,
+                result: exdata
             };
         } else {
             return {
