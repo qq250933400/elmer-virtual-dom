@@ -457,10 +457,15 @@ export class VirtualRender extends Common {
         const forReg = /^let\s{1,}([a-z0-9]{1,})\s{1,}in\s{1,}([a-z0-9\.\_\-]{1,})$/i;
         const forMatch = repeatFormula.match(forReg);
         const resultDoms: IVirtualElement[] = [];
+        const indexKey: string = dom.props["index"];
         if(forMatch) {
             const itemKey: string = forMatch[1];
             const dataKey: string = forMatch[2].replace(/^this\./i,"");
             const repeatData:any = this.getValue(optionsData, dataKey) || this.getValue(component, dataKey);
+            const limitKey: string = dom.props["key"];
+            if(this.isEmpty(limitKey)) {
+                throw new Error("em:for列表渲染必须设置key属性");
+            }
             if(repeatData) {
                 const sessionId = this.virtualDom.init(dom);
                 // tslint:disable-next-line: forin
@@ -475,7 +480,8 @@ export class VirtualRender extends Common {
                         ...optionsData
                     };
                     newDom.data[itemKey] = newItemData;
-                    newDom.data["index"] = forKey;
+                    newDom.data[indexKey] = forKey;
+                    newDom.props.key = limitKey + forKey;
                     resultDoms.push(newDom);
                 }
                 this.virtualDom.clear(sessionId);
