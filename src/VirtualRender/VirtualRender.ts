@@ -500,7 +500,7 @@ export class VirtualRender extends Common {
         const resultDoms: IVirtualElement[] = [];
         const itemKey: string = dom.props["item"];
         const indexKey: string = dom.props["index"];
-        const repeatData:any = this.getValue(optionsData, dataKey) || this.getValue(component, dataKey);
+        const repeatData:any = this.checkCallbackCode(component, optionsData, dataKey) || this.getValue(optionsData, dataKey) || this.getValue(component, dataKey);
         if(repeatData) {
             let childrenLen = 0;
             let repeateDom:IVirtualElement = null;
@@ -538,5 +538,36 @@ export class VirtualRender extends Common {
             this.virtualDom.clear(sessionId);
         }
         return resultDoms;
+    }
+    private checkCallbackCode(component: any, optionsData: any, code: string): any {
+        if(!this.isEmpty(code)) {
+            const checkCode = code.replace(/^\s*\{\{/, "").replace(/\}\}\s*$/,"").replace(/^\s*/,"").replace(/\s*$/,"");
+            const callbackMatch = checkCode.match(/^([a-z0-9\_\.]{1,})\(([\s\S]*)\)$/i);
+            if(callbackMatch) {
+                const callbackKey = callbackMatch[1];
+                const paramsKey = callbackMatch[2] || "";
+                const callback = this.getValue(optionsData, callbackKey) || this.getValue(component, callbackKey);
+                if(typeof callback === "function") {
+                    const varArr = paramsKey.split(",");
+                    if(varArr.length > 0) {
+                        const callbackParams:any[] = [];
+                        varArr.map((tmpItem: string) => {
+                            const varKey = tmpItem.replace(/^\s*/,"").replace(/\s*$/,"");
+                            if((/^"/.test(varKey) && /"$/.test(varKey)) || (/^'/.test(varKey) && /'$/.test(varKey))) {
+                                // 当前参数为字符类型数据
+                                callbackParams.push(varKey);
+                            } else {
+                                // 当前参数是变量从component读取数据
+                                const pV = this.getValue(optionsData, varKey) || this.getValue(component, varKey);
+                                callbackParams.push(pV);
+                            }
+                        });
+                        return callback.apply(component, callbackParams);
+                    } else {
+                        return callback.call(component);
+                    }
+                }
+            }
+        }
     }
 }
