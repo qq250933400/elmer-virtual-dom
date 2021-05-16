@@ -71,7 +71,7 @@ export class VirtualRenderDiff extends Common {
                 }
             }
         }
-        if(/^context$/.test(event?.dom?.tagName)) {
+        if(/^context$/.test(event?.dom?.tagName) || /^[Cc]ontext([A-Z\-\_][0-9a-zA-Z]{1,})$/.test(event?.dom?.tagName)) {
             event.dom.status = "DELETE";
             // 用于加载子组件的标签，在做渲染之前应该被替换掉，如果未替换则认为没有子组件
             // 但此组件也不应该显示在真实dom树

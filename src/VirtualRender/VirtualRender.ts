@@ -126,31 +126,28 @@ export class VirtualRender extends Common {
     private replaceContent(checkItem:IVirtualElement, children?: IVirtualElement[]): void {
         // 当前component接收到children的时候才需要执行此方法，为减少循环提升性能
         if(children && children.length>0) {
-            const contextWrapperReg = /^context([A-Z\-\_][0-9a-zA-Z]{1,})$/;
+            const contextWrapperReg = /^[Cc]ontext([A-Z\-\_][0-9a-zA-Z]{1,})$/;
             // ContextLeft  -> ChildrenWrapperLeft
             for(let i=0;i<checkItem.children.length;i++) {
                 const uItem = checkItem.children[i];
                 if(uItem.status !== "DELETE") {
                     // --- 检测Item是否包含Content元素，检测到，替换为children
                     if(
-                        /\<context\s*>\s*\S*\<\/context\s*\>/i.test(uItem.innerHTML) ||
-                        /\<context\s*\/\>/i.test(uItem.innerHTML) ||
-                        uItem.tagName === "context" ||
-                        /\<content\s*>\s*\S*\<\/content\s*\>/i.test(uItem.innerHTML) ||
-                        /\<content\s*\/\>/i.test(uItem.innerHTML) ||
-                        uItem.tagName === "content" ||
-                        /\<context[A-Z\-\_][0-9a-zA-Z]{1,}\s*\/\>/.test(uItem.innerHTML) ||
-                        /\<context[A-Z\-\_][0-9a-zA-Z]{1,}\s*\>\s*\S*\<\/context[A-Z\-\_][0-9a-zA-Z]{1,}\s*\>/.test(uItem.innerHTML) ||
+                        uItem.tagName.toLowerCase() === "context" ||
+                        /\<[Cc]ontext\s*>\s*\S*\<\/[Cc]ontext\s*\>/i.test(uItem.innerHTML) ||
+                        /\<[Cc]ontext\s*\/\>/i.test(uItem.innerHTML) ||
+                        /\<[Cc]ontext[A-Z\-\_][0-9a-zA-Z]{1,}\s*\/\>/.test(uItem.innerHTML) ||
+                        /\<[Cc]ontext[A-Z\-\_][0-9a-zA-Z]{1,}\s*\>\s*\S*\<\/[Cc]ontext[A-Z\-\_][0-9a-zA-Z]{1,}\s*\>/.test(uItem.innerHTML) ||
                         contextWrapperReg.test(uItem.tagName)) {
                         // 检测到当前dom是content元素或者包含content元素，
                         // 其他dom结构不用再做，
-                        if(uItem.tagName.toLowerCase() === "content" || uItem.tagName.toLowerCase() === "context") {
+                        if(uItem.tagName.toLowerCase() === "context") {
                             let isContextKey = false;
                             let renderKeyReg = /([A-Z\-\_][0-9a-zA-Z]{1,})$/;
                             for(let j=0,mLen = children.length;j<mLen;j++) {
                                 let renderKeyMatch = children[j].tagName.match(renderKeyReg);
                                 if(renderKeyMatch) {
-                                    const contextRegKey = "ChildrenWrapper" + renderKeyMatch[1];
+                                    const contextRegKey = "Container" + renderKeyMatch[1];
                                     if(contextRegKey === children[j].tagName) {
                                         isContextKey = true;
                                         break;
@@ -169,7 +166,7 @@ export class VirtualRender extends Common {
                         } else {
                             const contextMatch = uItem.tagName.match(contextWrapperReg);
                             if(contextMatch) {
-                                const contextKey = "ChildrenWrapper" + contextMatch[1];
+                                const contextKey = "Container" + contextMatch[1];
                                 for(let j=0, mLen = children.length; j< mLen; j++) {
                                     if(contextKey === children[j].tagName) {
                                         for(let z=0,zLen = children[j].children.length;z<zLen;z++) {
