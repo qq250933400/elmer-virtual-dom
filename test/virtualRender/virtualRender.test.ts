@@ -29,7 +29,7 @@ describe("虚拟dom渲染测试", () => {
             chai.assert.equal(vdom.children[0].children[1].innerHTML, "1 hello B");
         });
         it("列表渲染: em:for属性", ()=> {
-            const testCode = `<ul><li em:for="let myData in this.listData">{{myData.key}} hello {{myData.title}}</li></ul>`;
+            const testCode = `<ul><li em:for="let myData in this.listData" key="formItem">{{myData.key}} hello {{myData.title}}</li></ul>`;
             const testData = {
                 listData: [
                     {title: "A", value: 1},
@@ -128,7 +128,7 @@ describe("虚拟dom渲染测试", () => {
     });
     describe("em:属性标签测试", () => {
         it("em:for属性测试, 旧版本列表循环渲染", () => {
-            const testCode = "<label em:for='let item in this.listData'>测试{{item.title}}</label>";
+            const testCode = "<label em:for='let item in this.listData' key='letFor'>测试{{item.title}}</label>";
             const testData = {
                 level: 2,
                 listData: []
@@ -182,6 +182,31 @@ describe("虚拟dom渲染测试", () => {
             });
             chai.assert.deepEqual(newDom.children[0].status, "DELETE");
             chai.assert.deepEqual(newDom2.children[0].status, "APPEND");
+        });
+    });
+    describe("forEach标签循环渲染", () => {
+        const htmlCode = `<forEach data="listData" item="item"><button key="{{item.id}}">Hello{{item.value}}</button></forEach>`;
+        const listData = [
+            { id: "2233", value: "NewValue1", title: "Hello world1" }, 
+            { id: "2234", value: "NewValue2", title: "Hello world2" },
+            { id: "2235", value: "NewValue3", title: "Hello world3" },
+            { id: "2236", value: "NewValue4", title: "Hello world4" }
+        ];
+        const vdom = htmlParse.parse(htmlCode);
+        it("简单列表渲染", () => {
+            const newDom = virtualRender.render(vdom, null, {listData});
+            chai.assert.equal(newDom.children.length, 4);
+            chai.assert.equal(newDom.children[1].innerHTML, "HelloNewValue2");
+        });
+        it("删除第二项，diff运算以后status应该是DELETE", () => {
+            const newDom = virtualRender.render(vdom, null, {listData});
+            const newListData = [
+                { id: "2233", value: "NewValue1", title: "Hello world1" }, 
+                { id: "2235", value: "NewValue3", title: "Hello world3" },
+                { id: "2236", value: "NewValue4", title: "Hello world4" }
+            ];
+            const diffDom = virtualRender.render(vdom, newDom, {listData: newListData});
+            chai.assert.equal(diffDom.deleteElements[0].status, "DELETE");
         });
     });
 });

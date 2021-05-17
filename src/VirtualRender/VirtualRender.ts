@@ -1,6 +1,6 @@
 import { Common } from "elmer-common";
 import { IVirtualElement } from "../IVirtualElement";
-import { ASyntax, SyntaxEM, SyntaxEvent, SyntaxText, SysntaxAttrs } from "../RenderingSyntax";
+import { ASyntax, SyntaxAttrs, SyntaxEM, SyntaxEvent, SyntaxText } from "../RenderingSyntax";
 import { TypeRenderEvent } from "../RenderingSyntax/ISyntax";
 import { VirtualNode } from "./VirtualNode";
 import { VirtualRenderDiff } from "./VirtualRenderDiff";
@@ -28,21 +28,24 @@ type TypeVirtualRenderOptions = {
     children?: IVirtualElement[];
     sessionId?: string
 };
+type TypeAsyntaxs<T={}> = {[P in keyof T]?: ASyntax};
 /**
  * v2.0.0
  * 新版本VirtualRender合并渲染和diff运算，减少虚拟dom的遍历提升速度
  */
 export class VirtualRender extends Common {
     static className: string = "VirtualRender";
-    plugin:ASyntax[] = [];
     private virtualDiff: VirtualRenderDiff;
     private events: any = {};
+    private asyntaxs: TypeAsyntaxs<any>;
     constructor(private virtualDom: VirtualNode) {
         super();
-        this.plugin.push(new SyntaxText());
-        this.plugin.push(new SyntaxEvent());
-        this.plugin.push(new SyntaxEM());
-        this.plugin.push(new SysntaxAttrs());
+        this.asyntaxs = {
+            syntaxAttrs: new SyntaxAttrs(),
+            syntaxEM: new SyntaxEM(),
+            syntaxEvent: new SyntaxEvent(),
+            syntaxText: new SyntaxText()
+        };
         this.virtualDiff = new VirtualRenderDiff();
     }
     bind(sessionId: string, type: TypeVirtualRenderEventType, callback: Function): Function {
@@ -339,7 +342,8 @@ export class VirtualRender extends Common {
                     let attrValue = dom.props[attrKey];
                     let newAttrKey = attrKey;
                     let isEvent = false; // just for current attribute
-                    for(const plugin of this.plugin) {
+                    for(const asynKey of Object.keys(this.asyntaxs)) {
+                        const plugin = this.asyntaxs[asynKey];
                         const renderEvent: TypeRenderEvent = {
                             attrKey,
                             break: false,
@@ -422,7 +426,8 @@ export class VirtualRender extends Common {
             }
         } else {
             let result = dom.innerHTML;
-            for(const plugin of this.plugin) {
+            for(const asynKey of Object.keys(this.asyntaxs)) {
+                const plugin = this.asyntaxs[asynKey];
                 const renderEvent: TypeRenderEvent = {
                     attrKey: null,
                     break: false,
@@ -519,6 +524,7 @@ export class VirtualRender extends Common {
                 throw new Error("forEach标签下的子标签必须要设置key属性");
             }
             const sessionId = this.virtualDom.init(repeateDom);
+            const exKeys = [];
             // tslint:disable-next-line: forin
             for(const forKey in repeatData) {
                 const newDom = this.virtualDom.clone(sessionId);
@@ -527,9 +533,23 @@ export class VirtualRender extends Common {
                     ...newDom.data,
                     ...optionsData
                 };
-                newDom.props.key = newDom.props.key + forKey;
                 newDom.data[itemKey] = newItemData;
-                newDom.data[indexKey] = forKey;
+                if(!this.isEmpty(indexKey)) {
+                    newDom.data[indexKey] = forKey;
+                }
+                const keyResult = this.asyntaxs.syntaxText.render({
+                    attrKey: "key",
+                    component,
+                    data: newDom.data,
+                    target: newDom.props.key,
+                    vdom: newDom,
+                });
+                if(keyResult.hasChange) {
+                    newDom.props.key = exKeys.indexOf(keyResult.result) >= 0 ? exKeys[keyResult.result] + forKey : keyResult.result;
+                    exKeys.push(keyResult.result);
+                } else {
+                    newDom.props.key = newDom.props.key + forKey;
+                }
                 resultDoms.push(newDom);
             }
             this.virtualDom.clear(sessionId);

@@ -1,7 +1,7 @@
 import { ASyntax } from "./ASyntax";
 import { TypeRenderEvent, TypeRenderResult } from "./ISyntax";
 
-export class SysntaxAttrs extends ASyntax {
+export class SyntaxAttrs extends ASyntax {
     render(event: TypeRenderEvent):TypeRenderResult {
         if(event.attrKey === "...") {
             const targetKeys = this.isString(event.target) ? event.target.replace(/\s*\{\{\s*/,"").replace(/\s*\}\}\s*/, "") : "";
