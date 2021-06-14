@@ -1,5 +1,5 @@
 import { Common } from "elmer-common";
-import { IVirtualElement, VirtualElementOperate } from "./IVirtualElement";
+import { IVirtualElement, VirtualElementOperate } from "../VirtualRender/IVirtualElement";
 
 type ReadAttrValue = {
     value: string;
@@ -11,15 +11,16 @@ type ReadAttrResult = {
     htmlCode: string;
 };
 
+/**
+ * Html代码解析模块
+ * 将html代码解析成为Json数据
+ */
 export class HtmlParse extends Common {
-    static className:string = "HtmlParse";
     private autoCloseTagList:RegExp[] = [
         /^input$/i,/^br$/i,/^hr$/i,/^img$/i,/^meta$/i,/^\!DOCTYPE$/i
     ];
     private rootNodes:any = {};
-    constructor() {
-        super();
-    }
+
     mergeArray(array1: any[], array2: any[]): any[] {
         const resultData: any[] = [];
         if(array1 && array1.length > 0) {

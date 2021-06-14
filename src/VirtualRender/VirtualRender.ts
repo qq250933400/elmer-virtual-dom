@@ -1,7 +1,7 @@
 import { Common } from "elmer-common";
-import { IVirtualElement } from "../IVirtualElement";
 import { ASyntax, SyntaxAttrs, SyntaxEM, SyntaxEvent, SyntaxText } from "../RenderingSyntax";
 import { TypeRenderEvent } from "../RenderingSyntax/ISyntax";
+import { IVirtualElement } from "./IVirtualElement";
 import { VirtualNode } from "./VirtualNode";
 import { VirtualRenderDiff } from "./VirtualRenderDiff";
 
@@ -26,7 +26,7 @@ type TypeVirtualRenderEventType = "onBeforeRender" | "onBeforeReplaceContext" | 
 type TypeVirtualRenderOptions = {
     rootPath?: number[],
     children?: IVirtualElement[];
-    sessionId?: string
+    sessionId?: string;
 };
 type TypeAsyntaxs<T={}> = {[P in keyof T]?: ASyntax};
 /**

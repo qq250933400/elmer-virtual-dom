@@ -1,5 +1,5 @@
 import { Common } from "elmer-common";
-import { IVirtualElement } from "../IVirtualElement";
+import { IVirtualElement } from "./IVirtualElement";
 
 type TypeCheckSameNodeResult = {
     sameNode: boolean;

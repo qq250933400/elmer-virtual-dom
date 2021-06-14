@@ -1,4 +1,4 @@
-import { IVirtualElement } from "../IVirtualElement";
+import { IVirtualElement } from "../VirtualRender/IVirtualElement";
 
 export type TypeRenderActions = "BindText" | "BindAction" | "BindEvent";
 

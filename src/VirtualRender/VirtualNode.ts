@@ -1,8 +1,7 @@
 import { Common } from "elmer-common";
-import { IVirtualElement, VirtualElementOperateType } from "../IVirtualElement";
+import { IVirtualElement, VirtualElementOperateType } from "./IVirtualElement";
 
 export class VirtualNode extends Common {
-    static className = "VirtualNode";
     private nodes: any = {};
     init(vdom:IVirtualElement): string {
         const vId = "virualNode_" + this.guid();
@@ -130,7 +129,7 @@ export class VirtualNode extends Common {
             return findDom ? tmpDom : null;
         }
     }
-     /**
+    /**
      * 获取前一个节点
      */
     getPrev(session: string, refDom: IVirtualElement): IVirtualElement|null {
@@ -158,7 +157,7 @@ export class VirtualNode extends Common {
         }
         return null;
     }
-     /**
+    /**
      * 复制自身节点元素
      */
     clone(sessionId: string): IVirtualElement {
