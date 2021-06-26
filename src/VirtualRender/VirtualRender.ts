@@ -22,7 +22,7 @@ type VirtualLoopRenderResult = {
     hasRenderChange: boolean;
     innerHTML: string;
 };
-type TypeVirtualRenderEventType = "onBeforeRender" | "onBeforeReplaceContext" | "onRender";
+type TypeVirtualRenderEventType = "onBeforeRender" | "onBeforeRenderAttr" | "onBeforeReplaceContext" | "onAfterRender" | "onAfterDiff";
 type TypeVirtualRenderOptions = {
     rootPath?: number[],
     children?: IVirtualElement[];
@@ -48,7 +48,7 @@ export class VirtualRender extends Common {
         };
         this.virtualDiff = new VirtualRenderDiff();
     }
-    bind(sessionId: string, type: TypeVirtualRenderEventType, callback: Function): Function {
+    on(sessionId: string, type: TypeVirtualRenderEventType, callback: Function): Function {
         const evtId = "virtualRenderEvent_" + this.guid();
         if(!this.events[sessionId]) {
             this.events[sessionId] = {};
@@ -80,10 +80,10 @@ export class VirtualRender extends Common {
         const renderDom:any = JSON.parse(JSON.stringify(domData));
         renderDom.path = options ? (options.rootPath || []) : []; // 设置根节点路径
         // 在替换子节点容器前执行
-        this.raiseEvent(options?.sessionId, "onBeforeReplaceContext", {vdom: renderDom});
+        this.fire(options?.sessionId, "onBeforeReplaceContext", {vdom: renderDom});
         options && options.children && this.replaceContent(renderDom, options.children);
         // 替换子节点容器后，渲染数据前执行
-        this.raiseEvent(options?.sessionId, "onBeforeRender", {vdom: renderDom});
+        this.fire(options?.sessionId, "onBeforeRender", {vdom: renderDom});
         this.forEach({
             component,
             doDiff: oldDomData && oldDomData.children.length > 0,
@@ -97,7 +97,7 @@ export class VirtualRender extends Common {
         });
         return renderDom;
     }
-    private raiseEvent(sessionId: string, eventName: TypeVirtualRenderEventType, args?: any): any {
+    private fire(sessionId: string, eventName: TypeVirtualRenderEventType, args?: any): any {
         if(!this.isEmpty(sessionId) && !this.isEmpty(eventName)) {
             const eventKey = `${sessionId}.${eventName}`;
             const eventObj = this.getValue(this.events, eventKey);
@@ -203,6 +203,7 @@ export class VirtualRender extends Common {
         const isUserComponent = !event.isUserComponent ? (event.oldDomData ? !this.isEmpty(event.oldDomData.virtualID) : false) : true;
         let hasForEach = false;
         let hasRenderChange = false;
+        let hasStatusChange = false;
         let hasRenderInnerHTML = "";
         let forLen = event.domData.children.length;
         let lastMatchIndex = 0;
@@ -244,7 +245,7 @@ export class VirtualRender extends Common {
                     dom.status = "DELETE";
                 }
                 // 在此执行emit事件，在renderAttribure前做一些改动
-                const eventResult:any = this.raiseEvent(event.sessionId, "onRender", {
+                const eventResult:any = this.fire(event.sessionId, "onBeforeRenderAttr", {
                     dom,
                     isComponentChild: event.isComponentChild
                 });
@@ -271,6 +272,17 @@ export class VirtualRender extends Common {
                     matchIndex: 0
                 };
                 lastMatchIndex = diffResult.matchIndex;
+                if(dom.status !== "NORMAL") {
+                    hasStatusChange = true;
+                }
+                this.fire(event.sessionId, "onAfterRender", {
+                    dataChange: hasRenderChange,
+                    forEachChange: hasForEach,
+                    status: dom.status,
+                    statusChange: hasStatusChange,
+                    vParent: event.domData,
+                    vdom: dom
+                });
                 // --------进行下一层级的渲染和diff运算
                 if(dom.children.length > 0) {
                     const myEvent:VirtualRenderEvent = {
