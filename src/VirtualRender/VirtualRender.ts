@@ -38,7 +38,8 @@ export class VirtualRender extends Common {
     private virtualDiff: VirtualRenderDiff;
     private events: any = {};
     private asyntaxs: TypeAsyntaxs<any>;
-    constructor(private virtualDom: VirtualNode) {
+    private virtualDom: VirtualNode;
+    constructor(virtualDom: VirtualNode) {
         super();
         this.asyntaxs = {
             syntaxAttrs: new SyntaxAttrs(),
@@ -47,6 +48,7 @@ export class VirtualRender extends Common {
             syntaxText: new SyntaxText()
         };
         this.virtualDiff = new VirtualRenderDiff();
+        this.virtualDom = virtualDom;
     }
     on(sessionId: string, type: TypeVirtualRenderEventType, callback: Function): Function {
         const evtId = "virtualRenderEvent_" + this.guid();
@@ -459,6 +461,7 @@ export class VirtualRender extends Common {
             }
             dom.innerHTML = result;
         }
+        delete dom.isClose;
         return hasChange;
     }
     /**
