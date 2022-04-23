@@ -113,7 +113,7 @@ describe("虚拟dom渲染测试", () => {
     });
     describe("事件渲染测试", () => {
         it("单击事件测试", () => {
-            const testCode = `<label et:click="onClick">逻辑绑定</label>`;
+            const testCode = `<div><label et:click="onClick">逻辑绑定</label><AsyncApp et:change="onClick" test="{{state.test}}"/></div>`;
             const testData = {
                 level: 2,
                 onClick(): void {
@@ -123,7 +123,8 @@ describe("虚拟dom渲染测试", () => {
             };
             let vdom = htmlParse.parse(testCode);
             vdom = virtualRender.render(vdom, null, testData);
-            chai.assert.strictEqual<string>(typeof vdom.children[0].events["click"], "function");
+            chai.assert.strictEqual<string>(typeof vdom.children[0].children[0].events["click"], "function");
+            console.log(vdom.children[0].children[1].events);
         });
     });
     describe("em:属性标签测试", () => {

@@ -38,3 +38,33 @@
    > ```
    > 4. Lambda表达式绑定, {{demo.level % 2 eq 0 ? 'true' : 'false'}}, 不支持嵌套使用
 - 事件绑定
+   > et:eventName
+- 自定义组件嵌套
+   自定义组件内部使用<Context />或 <Context_Bottom /> 用于接收子组件
+   引用自定义组件
+   ``` typescript
+      import { useComponent } from "elmer-ui-core";
+      const Button = () => {
+         return `<button>Text_<Context /></button>`;
+      };
+      const MutilLayout = () => {
+         return `<div>
+            <Context_Top />
+            <hr/>
+            <Context_Bottom />
+         </div>`;
+      };
+      const App = () => {
+         useComponent("Button", Button);
+         useComponent("Layout", MutilLayout);
+         return `<div>
+            <span>用于做测试</span>
+            <Button>New Text</Button>
+            <hr/>
+            <Layout>
+               <Container_Top><span>这是顶部内容</span></Container_Top>
+               <Container_Bottom><span>这是底部内容</span></Container_Bottom>
+            </Layout>
+         </div>`;
+      };
+   ```
