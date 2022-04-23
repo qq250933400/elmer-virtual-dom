@@ -1,7 +1,7 @@
 import * as chai from "chai";
 import "mocha";
+import { HtmlParse } from "../../src/parse/HtmlParse";
 import { SyntaxText } from "../../src/RenderingSyntax";
-import { HtmlParse } from "../../src/HtmlParse";
 
 const htmlParse = new HtmlParse();
 const st = new SyntaxText();

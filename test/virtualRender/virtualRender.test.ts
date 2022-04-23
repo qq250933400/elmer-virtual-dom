@@ -162,7 +162,7 @@ describe("虚拟dom渲染测试", () => {
             const testCode = "<label em:test='demoCallback'>测试{{item.title}}</label>";
             const vdom = htmlParse.parse(testCode);
             const ssid = virtualRender.guid();
-            const descCallback = virtualRender.bind(ssid, "onBeforeRender", () => {
+            const descCallback = virtualRender.on(ssid, "onBeforeRender", () => {
                 done();
             });
             virtualRender.render(vdom, null, {}, {
