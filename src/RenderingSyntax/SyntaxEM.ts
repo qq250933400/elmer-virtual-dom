@@ -4,12 +4,13 @@ import { TypeRenderEvent, TypeRenderResult } from "./ISyntax";
 export class SyntaxEM extends ASyntax {
     render(event: TypeRenderEvent): TypeRenderResult {
         if(/^em\:/i.test(event.attrKey)) {
-            const emValue = this.runLimitScript(event.target, event.component, event.data);
+            const emTarget = event.target?.replace(/^\{\{/, "")?.replace(/\}\}\s*$/, "");
+            const emValue = this.runLimitScript(emTarget, event.component, event.data);
             event.break = true;
             return {
                 attrKey: event.attrKey.replace(/^em\:/i, ""),
                 hasChange: true,
-                result: emValue
+                result: typeof emValue === "function" ? emValue.bind(event.component) : emValue
             };
         } else {
             return {

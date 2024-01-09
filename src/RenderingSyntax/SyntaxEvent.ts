@@ -10,7 +10,7 @@ export class SyntaxEvent extends ASyntax {
                 attrKey: event.attrKey.replace(/^et\:/i,""),
                 hasChange: typeof action === "function",
                 isEvent: true,
-                result: action
+                result: typeof action === "function" ? action.bind(event.component) : action
             };
         } else {
             return {

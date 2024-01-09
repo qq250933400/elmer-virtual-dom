@@ -322,7 +322,7 @@ export class VirtualRender extends Common {
         // 将没有做过对比的旧节点找出来并标记为删除状态
         // 如果节点属于自定义组件子节点不标记删除状态，由于子节点没有做diff运算，所有子节点都没有标记为diff状态
         if(!isUserComponent && event.oldDomData && event.oldDomData.children.length > 0) {
-            event.oldDomData.children.map((tmpDom: IVirtualElement) => {
+            event.oldDomData.children.forEach((tmpDom: IVirtualElement) => {
                 // tmpDom.tagAttrs && console.log(tmpDom.tagName, tmpDom.tagAttrs.checked);
                 if(!tmpDom.isDiff) {
                     tmpDom.status = "DELETE";
